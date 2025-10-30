@@ -5,6 +5,8 @@ import WorkerRegister from "./Register&Login/register/WorkerRegister";
 import Login from "./Register&Login/login/Login";
 import Protected from "./routes/Protected";
 import OnboardingGate from "./routes/OnboardingGate";
+import TermsAndPriv from "./global/Terms&Priv";
+import Contact from "./global/Contact";
 
 // Importa el WorkerPost como *default* (tu archivo lo exporta por defecto)
 import { WorkerPost } from "./Register&Login/register/WorkerPost";
@@ -50,6 +52,8 @@ export default function App() {
 
       {/* 404 -> por ahora vuelve a la landing */}
       <Route path="*" element={<LandingPage />} />
+      <Route path="/terms" element={<TermsAndPriv />} />
+      <Route path="/contact" element={<Contact />} />
     </Routes>
   );
 }
