@@ -1,14 +1,29 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Input from "../components/Input";
 import BackNav from "../../ui/BackNav";
 import PageTransition from "../../ui/PageTransition";
 import { LOGIN_URL } from "../../global_helpers/api";
-import { useNavigate } from "react-router-dom";
+import { decodeJWT, isJwtExpired } from "../../global_helpers/jwt";
+
+type LoginResponse = {
+  token?: string;
+  user_data?: {
+    nombre?: string;
+    foto_perfil?: string;
+    tipo_cuenta?: string;
+    user_id?: number | string;
+    email?: string;
+    email_verificado?: boolean;
+    completed_onboarding?: boolean;
+  };
+  message?: string;
+};
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; pwd?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; pwd?: string; server?: string }>({});
   const [loading, setLoading] = useState(false);
   const nav = useNavigate();
 
@@ -16,57 +31,75 @@ export default function Login() {
     e.preventDefault();
 
     const err: typeof errors = {};
-    if (!email) err.email = "Ingresa tu correo";
-    if (!pwd) err.pwd = "Ingresa tu contraseña";
+    if (!email.trim()) err.email = "Ingresa tu correo";
+    if (!pwd.trim()) err.pwd = "Ingresa tu contraseña";
     setErrors(err);
     if (Object.keys(err).length) return;
 
     try {
       setLoading(true);
 
-      // 1️⃣ Login directo
       const res = await fetch(LOGIN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password: pwd }),
       });
 
-      const data = await res.json();
+      const data: LoginResponse = await res.json().catch(() => ({} as LoginResponse));
+
       if (!res.ok) {
-        alert(data?.message || "Credenciales inválidas");
+        const msg = data?.message || "Credenciales inválidas";
+        setErrors((p) => ({ ...p, server: msg }));
         return;
       }
 
-      // 2️⃣ Guardar token
       const token = data?.token;
       if (!token) {
-        alert("No se recibió token del servidor.");
+        setErrors((p) => ({ ...p, server: "No se recibió token del servidor." }));
         return;
       }
+
+      // Guardar token
       localStorage.setItem("auth_token", token);
 
-      // 3️⃣ Decidir siguiente paso según flags del backend
-      // ⚠️ Asegúrate que el backend devuelva algo como:
-      // { token, user: { email_verificado, completed_onboarding, tipo_cuenta } }
-      const user = data?.user ?? {};
+      // Decodificar claims del JWT
+      const claims = decodeJWT(token);
 
-      if (!user.email_verificado) {
-        alert("Debes verificar tu correo para continuar.");
-        nav("/check-email", { state: { email: user.email } });
+      // Si el token vino expirado, corta
+      if (isJwtExpired(claims)) {
+        setErrors((p) => ({ ...p, server: "La sesión ha expirado. Intenta nuevamente." }));
         return;
       }
 
-      if (!user.completed_onboarding) {
-        // Redirigir a onboarding post registro
+      // Fallback a user_data del backend
+      const ud = data?.user_data ?? {};
+      const emailVerificado =
+        (claims?.email_verificado as boolean | undefined) ??
+        (claims as any)?.emailVerified ??
+        ud?.email_verificado ??
+        false;
+
+      const completedOnboarding =
+        (claims?.completed_onboarding as boolean | undefined) ??
+        ud?.completed_onboarding ??
+        false;
+
+      // Redirecciones (sin /me)
+      if (!emailVerificado) {
+        const emailFrom = (claims?.email as string) ?? (ud?.email as string) ?? email;
+        nav("/check-email", { state: { email: emailFrom } });
+        return;
+      }
+
+      if (!completedOnboarding) {
         nav("/register/worker/post");
         return;
       }
 
-      // Si todo está completo, ir al dashboard
       nav("/dashboard");
     } catch (e: any) {
       console.error(e);
-      alert("Error al iniciar sesión. Verifica tu conexión o credenciales.");
+      setErrors((p) => ({ ...p, server: "Error al iniciar sesión. Verifica tu conexión o el servidor." }));
     } finally {
       setLoading(false);
     }
@@ -77,10 +110,9 @@ export default function Login() {
       <section className="min-h-[80vh] flex items-center justify-center py-16">
         <div className="w-full max-w-md px-6">
           <BackNav className="mb-6" homeTo="/" />
+
           <div className="text-center mb-8">
-            <h1 className="font-display text-3xl font-semibold tracking-tight">
-              Ingresar a CameYa
-            </h1>
+            <h1 className="font-display text-3xl font-semibold tracking-tight">Ingresar a CameYa</h1>
             <p className="mt-2 text-sm text-foreground-light/70 dark:text-foreground-dark/70">
               Usa tu correo institucional <strong>.edu.ec</strong>
             </p>
@@ -97,6 +129,7 @@ export default function Login() {
               autoComplete="email"
               required
             />
+
             <Input
               label="Contraseña"
               type="password"
@@ -107,6 +140,8 @@ export default function Login() {
               autoComplete="current-password"
               required
             />
+
+            {errors.server && <p className="text-xs text-red-600">{errors.server}</p>}
 
             <button
               type="submit"
