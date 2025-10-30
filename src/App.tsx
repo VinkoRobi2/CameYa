@@ -1,40 +1,38 @@
-// App.tsx
-import { Routes, Route, useLocation } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
-import ScrollToTop from "./ui/ScrollToTop";
-
-import LandingPage from "./landingPage/LandingPage";
-import Login from "./Register&Login/login";
-import ChooseRegister from "./Register&Login/register";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import EmailCheck from "./pages/auth/EmailCheck";
+import VerifyEmail from "./pages/auth/VerifyEmail";
 import WorkerRegister from "./Register&Login/register/WorkerRegister";
-import EmployerRegister from "./Register&Login/register/EmployerRegister";
+import Login from "./Register&Login/login/Login";
+import Protected from "./routes/Protected";
+import OnboardingGate from "./routes/OnboardingGate";
+import { WorkerPost } from "./Register&Login/register/WorkerPost";
 
-// ⬇️ importa tus nuevas páginas
-import TermsAndPriv from "./global/Terms&Priv";
-import Contact from "./global/Contact";
-
-export default function App() {
-  const location = useLocation();
-
+export default function AppRouter() {
   return (
-    <>
-      <ScrollToTop />
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
+    <BrowserRouter>
+      <Routes>
+        {/* Auth */}
+        <Route path="/register" element={<WorkerRegister />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/check-email" element={<EmailCheck />} />
+        <Route path="/verify" element={<VerifyEmail />} />
 
-          <Route path="/register" element={<ChooseRegister />} />
-          <Route path="/register/worker" element={<WorkerRegister />} />
-          <Route path="/register/employer" element={<EmployerRegister />} />
+        {/* Onboarding protegido */}
+        <Route
+          path="/onboarding"
+          element={
+            <Protected>
+              <OnboardingGate>
+                <WorkerPost />
+              </OnboardingGate>
+            </Protected>
+          }
+        />
 
-          {/* ⬇️ nuevas rutas */}
-          <Route path="/terms" element={<TermsAndPriv />} />
-          <Route path="/contact" element={<Contact />} />
-
-          <Route path="*" element={<div className="p-8 text-center">Página no encontrada</div>} />
-        </Routes>
-      </AnimatePresence>
-    </>
+        {/* Dashboard y landing (placeholder) */}
+        <Route path="/dashboard" element={<div className="p-6">Dashboard</div>} />
+        <Route path="*" element={<div className="p-6">Landing</div>} />
+      </Routes>
+    </BrowserRouter>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import Input from "../../Register&Login/components/Input";
 import { Link } from "react-router-dom";
-import { Register } from "../../global_helpers/api";
+import { REGISTER_URL } from "../../global_helpers/api";
 
 export default function EmployerRegister() {
   const [orgName, setOrgName] = useState("");
@@ -75,7 +75,7 @@ export default function EmployerRegister() {
     };
 
     try {
-      const response = await axios.post(Register, data, {
+      const response = await axios.post(REGISTER_URL, data, {
         headers: {
           "Content-Type": "application/json",
         },
