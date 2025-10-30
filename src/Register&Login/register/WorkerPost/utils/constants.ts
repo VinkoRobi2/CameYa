@@ -7,6 +7,8 @@ export const SECTORES: { key: SectorKey; label: string }[] = [
   { key: "soporte", label: "Soporte / IT" },
   { key: "creativo", label: "Contenido / Creativo" },
   { key: "servicios", label: "Servicios varios" },
+  { key: "limpieza", label: "Limpieza" },
+  { key: "logistica", label: "Logística" },
 ];
 
 export const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
