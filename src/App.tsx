@@ -8,7 +8,7 @@ import OnboardingGate from "./routes/OnboardingGate";
 import TermsAndPriv from "./global/Terms&Priv";
 import Contact from "./global/Contact";
 
-// Importa el WorkerPost como *default* (tu archivo lo exporta por defecto)
+// Exportas WorkerPost como named export desde index.ts de su carpeta
 import { WorkerPost } from "./Register&Login/register/WorkerPost";
 
 // Tu landing real dentro de /landingPage
@@ -26,18 +26,28 @@ export default function App() {
       {/* Registro */}
       <Route path="/register" element={<ChooseRegister />} />
       <Route path="/register/worker" element={<WorkerRegister />} />
-      {/* Cuando tengas el formulario de empleador listo, habilita esta ruta:
-          <Route path="/register/employer" element={<EmployerRegister />} />
-      */}
+      {/* <Route path="/register/employer" element={<EmployerRegister />} /> */}
 
       {/* Auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/check-email" element={<EmailCheck />} />
       <Route path="/verify" element={<VerifyEmail />} />
 
-      {/* Onboarding protegido */}
+      {/* Onboarding protegido (ruta canónica) */}
       <Route
         path="/onboarding"
+        element={
+          <Protected>
+            <OnboardingGate>
+              <WorkerPost />
+            </OnboardingGate>
+          </Protected>
+        }
+      />
+
+      {/* Alias usado tras el login: /register/worker/post */}
+      <Route
+        path="/register/worker/post"
         element={
           <Protected>
             <OnboardingGate>
@@ -50,10 +60,12 @@ export default function App() {
       {/* Dashboard */}
       <Route path="/dashboard" element={<div className="p-6">Dashboard</div>} />
 
-      {/* 404 -> por ahora vuelve a la landing */}
-      <Route path="*" element={<LandingPage />} />
+      {/* Legales / contacto */}
       <Route path="/terms" element={<TermsAndPriv />} />
       <Route path="/contact" element={<Contact />} />
+
+      {/* 404 -> por ahora vuelve a la landing */}
+      <Route path="*" element={<LandingPage />} />
     </Routes>
   );
 }
