@@ -186,7 +186,10 @@ export default function WorkerPost({
         fd.append("foto_perfil", state.foto_perfil);
         await fetch(`${API_BASE}/protected/completar-perfil`, {
           method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
           body: fd,
         }).then(handleJson);
       }
