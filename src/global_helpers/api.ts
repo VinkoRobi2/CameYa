@@ -1,5 +1,4 @@
-export const API_BASE =
-  import.meta?.env?.VITE_API_BASE ?? "http://localhost:3000";
+export const API_BASE = "https://3f652868a825.ngrok-free.app";
 
 // Auth & user
 export const REGISTER_URL = `${API_BASE}/register`;
