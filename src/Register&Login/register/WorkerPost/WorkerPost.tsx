@@ -1,4 +1,4 @@
-/* === WorkerPost.tsx (fix JSON vs multipart, enviar payload único válido) === */
+/* === WorkerPost.tsx (versión base64: foto embebida en JSON a /protected/completar-perfil) === */
 import { useMemo, useState, useEffect, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Stepper from "./components/Stepper";
@@ -46,6 +46,16 @@ function getUserIdFromLocalStorage(): string | undefined {
 function getAuthToken(): string {
   const raw = localStorage.getItem("auth_token") || "";
   return raw.replace(/^Bearer\s+/i, "").trim();
+}
+
+// File → dataURL (e.g., "data:image/png;base64,AAAA...")
+function fileToDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result as string);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
 }
 
 export default function WorkerPost({
@@ -167,9 +177,11 @@ export default function WorkerPost({
 
   /**
    * ✅ ÚNICO momento en que se llama a la API.
-   * 1) Foto (opcional) via multipart/form-data (SIN Content-Type manual)
-   * 2) PATCH JSON a /protected/completar-perfil con todos los campos requeridos por tu handler
-   * 3) Finalizar onboarding (opcional, si tu back lo usa)
+   * Base64: empaquetamos la foto dentro del JSON para /protected/completar-perfil (Content-Type: application/json)
+   * 1) Convertir foto a base64 (dataURL) si existe
+   * 2) Construir payload JSON con TODOS los campos y la foto base64
+   * 3) PATCH a /protected/completar-perfil
+   * 4) (opcional) Finalizar onboarding
    */
   async function submitAll() {
     if (!userId) return;
@@ -199,29 +211,32 @@ export default function WorkerPost({
     }
 
     try {
-      // 1) Foto (si existe): multipart SIN Content-Type
+      // 1) Foto a base64 (si existe)
+      let foto_data_url: string | undefined;
+      let foto_base64: string | undefined;
+      let foto_mime: string | undefined;
+
       if (state.foto_perfil) {
-        const fd = new FormData();
-        fd.append("foto_perfil", state.foto_perfil);
-        await fetch(`${API_BASE}/protected/completar-perfil`, {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` }, // NO pongas Content-Type aquí
-          body: fd,
-        }).then(handleJson);
+        foto_mime = state.foto_perfil.type || "application/octet-stream";
+        const dataURL = await fileToDataURL(state.foto_perfil); // "data:image/png;base64,AAAA..."
+        foto_data_url = dataURL;
+        const commaIdx = dataURL.indexOf(",");
+        foto_base64 = commaIdx >= 0 ? dataURL.slice(commaIdx + 1) : dataURL;
       }
 
-      // 2) Perfil completo en un solo PATCH JSON
+      // 2) Perfil completo en un solo PATCH JSON (Content-Type: application/json)
       const linksArray = Object.values(state.links || {})
         .filter((v): v is string => typeof v === "string" && v.trim() !== "")
         .map((v) => v.trim());
 
       const payload = {
+        // Campos esperados por tu handler
         titulo_perfil: state.titulo_perfil,
         sector_preferencias: state.sector_preferencias, // []string
         habilidades: skillsTags, // []string
         disponibilidad: availability ? AVAILABILITY_MAP[availability] : "", // string esperado por el back
         biografia: state.biografia,
-        links: linksArray, // []string (NO objeto)
+        links: linksArray, // []string
         perfil_completo:
           !!state.titulo_perfil &&
           (state.sector_preferencias?.length ?? 0) > 0 &&
@@ -229,6 +244,12 @@ export default function WorkerPost({
           !!availability &&
           !!state.biografia &&
           linksArray.length > 0,
+
+        // 📸 Extras para la foto (el back los puede leer opcionalmente)
+        // Si el back aún no soporta estos campos, los ignorará sin romper el bind.
+        foto_perfil_base64: foto_base64, // solo la parte base64 (sin el prefijo data:)
+        foto_perfil_mime: foto_mime,     // ej. "image/png"
+        foto_perfil_data_url: foto_data_url, // opcional: dataURL completa por si la quieres usar
       };
 
       await fetch(`${API_BASE}/protected/completar-perfil`, {
@@ -263,7 +284,7 @@ export default function WorkerPost({
       <section className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center px-6">
           <h2 className="text-xl font-semibold">Sesión requerida</h2>
-          <p className="mt-2 text-sm text-foreground-light/70">
+        <p className="mt-2 text-sm text-foreground-light/70">
             Inicia sesión para configurar tu perfil.
           </p>
           <button
