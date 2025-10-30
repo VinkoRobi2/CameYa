@@ -2,7 +2,7 @@ import { useState } from "react";
 import Input from "../components/Input";
 import BackNav from "../../ui/BackNav";
 import PageTransition from "../../ui/PageTransition";
-import { LOGIN_URL, ME_URL } from "../../global_helpers/api";
+import { LOGIN_URL } from "../../global_helpers/api";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
@@ -14,6 +14,7 @@ export default function Login() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const err: typeof errors = {};
     if (!email) err.email = "Ingresa tu correo";
     if (!pwd) err.pwd = "Ingresa tu contraseña";
@@ -22,47 +23,50 @@ export default function Login() {
 
     try {
       setLoading(true);
-      // 1) Login
+
+      // 1️⃣ Login directo
       const res = await fetch(LOGIN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password: pwd }),
       });
+
       const data = await res.json();
       if (!res.ok) {
         alert(data?.message || "Credenciales inválidas");
         return;
       }
 
-      // 2) Guardar token
+      // 2️⃣ Guardar token
       const token = data?.token;
+      if (!token) {
+        alert("No se recibió token del servidor.");
+        return;
+      }
       localStorage.setItem("auth_token", token);
 
-      // 3) Cargar perfil
-      const meRes = await fetch(ME_URL, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const me = await meRes.json();
-      if (!meRes.ok) {
-        alert("No se pudo cargar el perfil");
-        return;
-      }
+      // 3️⃣ Decidir siguiente paso según flags del backend
+      // ⚠️ Asegúrate que el backend devuelva algo como:
+      // { token, user: { email_verificado, completed_onboarding, tipo_cuenta } }
+      const user = data?.user ?? {};
 
-      // 4) Redirecciones
-      if (!me.email_verificado) {
+      if (!user.email_verificado) {
         alert("Debes verificar tu correo para continuar.");
-        nav("/check-email", { state: { email: me.email } });
+        nav("/check-email", { state: { email: user.email } });
         return;
       }
 
-      if (!me.completed_onboarding) {
-        nav("/onboarding");
+      if (!user.completed_onboarding) {
+        // Redirigir a onboarding post registro
+        nav("/register/worker/post");
         return;
       }
 
+      // Si todo está completo, ir al dashboard
       nav("/dashboard");
     } catch (e: any) {
-      alert(e?.message || "No se pudo iniciar sesión");
+      console.error(e);
+      alert("Error al iniciar sesión. Verifica tu conexión o credenciales.");
     } finally {
       setLoading(false);
     }
@@ -81,6 +85,7 @@ export default function Login() {
               Usa tu correo institucional <strong>.edu.ec</strong>
             </p>
           </div>
+
           <form onSubmit={onSubmit} className="space-y-4">
             <Input
               label="Correo institucional (.edu.ec)"
@@ -111,6 +116,7 @@ export default function Login() {
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
           </form>
+
           <div className="mt-4 text-center text-sm">
             <a className="text-primary font-semibold hover:underline" href="/register">
               Crear cuenta
