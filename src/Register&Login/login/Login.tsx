@@ -1,3 +1,4 @@
+// src/Register&Login/login/Login.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Input from "../components/Input";
@@ -59,7 +60,7 @@ export default function Login() {
         return;
       }
 
-      // Guardar token y respaldo de user_data
+      // ✅ Guardar token y respaldo de user_data
       localStorage.setItem("auth_token", token);
       if (data?.user_data) {
         localStorage.setItem("auth_user", JSON.stringify(data.user_data));
@@ -83,9 +84,7 @@ export default function Login() {
         false;
 
       const completedOnboarding =
-        (claims?.completed_onboarding as boolean | undefined) ??
-        ud?.completed_onboarding ??
-        false;
+        (claims?.completed_onboarding as boolean | undefined) ?? ud?.completed_onboarding ?? false;
 
       // Redirecciones (sin /me)
       if (!emailVerificado) {
@@ -95,14 +94,17 @@ export default function Login() {
       }
 
       if (!completedOnboarding) {
-        nav("/register/worker/post"); // o nav("/onboarding") si prefieres esa ruta
+        nav("/register/worker/post");
         return;
       }
 
       nav("/dashboard");
     } catch (e: any) {
       console.error(e);
-      setErrors((p) => ({ ...p, server: "Error al iniciar sesión. Verifica tu conexión o el servidor." }));
+      setErrors((p) => ({
+        ...p,
+        server: "Error al iniciar sesión. Verifica tu conexión o el servidor.",
+      }));
     } finally {
       setLoading(false);
     }
