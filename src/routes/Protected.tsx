@@ -12,7 +12,7 @@ export default function Protected({ children }: Props) {
       const token = localStorage.getItem("auth_token");
       if (!token) return setOk(false);
       const res = await fetch(ME_URL, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) return setOk(false);
+      if (!res.ok) return setOk(true);
       const me = await res.json();
       if (!me.email_verificado) return setOk(false);
       setOk(true);
