@@ -10,7 +10,6 @@ import ReviewSubmit from "./components/ReviewSubmit";
 import { useOnboarding } from "./hooks/useOnboarding";
 import { SECTORES } from "./utils/constants";
 import { decodeJWT } from "../../../global_helpers/jwt";
-
 import { API_BASE } from "../../../global_helpers/api";
 
 export default function WorkerPost({
@@ -28,7 +27,6 @@ export default function WorkerPost({
   // Token + userId desde el JWT
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
   const claims = decodeJWT(token);
-  // ✅ Acepta user_id, sub, uid o id
   const idClaim = (claims?.user_id ?? claims?.sub ?? claims?.uid ?? claims?.id);
   const userId = userIdProp ?? (idClaim != null ? String(idClaim) : undefined);
 
@@ -47,7 +45,7 @@ export default function WorkerPost({
   const next = () => setStep((s) => Math.min(s + 1, total));
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
-  // Util para manejar respuestas del backend
+  // Handler genérico de respuestas del backend
   async function handleJson(res: Response) {
     let payload: any = null;
     try {
@@ -63,33 +61,63 @@ export default function WorkerPost({
     return payload;
   }
 
-  async function saveStep(current: number) {
-    if (!userId) return; // seguridad
+  /**
+   * 🔒 Solo valida y avanza. NO llama a la API.
+   * - Paso 1: foto obligatoria
+   * - Paso 2: sectores + título obligatorios
+   * - Paso 3: bio + al menos un link obligatorios
+   */
+  function validateAndNext(current: number) {
+    const err = validate(current === 1); // en el paso 1 validamos foto obligatoria
+    if (current === 1 && err.foto_perfil) return;
+    if (current === 2 && (err.sector_preferencias || err.titulo_perfil)) return;
+    if (current === 3 && (err.biografia || err.links)) return;
+    next();
+  }
 
-    // Paso 1: foto obligatoria
-    if (current === 1) {
-      const err = validate(true);
-      if (err.foto_perfil) return;
+  /**
+   * ✅ ÚNICO momento en que se llama a la API.
+   * Ejecuta todo al final, en orden:
+   *  1) (opcional) Subida de foto
+   *  2) Patch de sectores + título
+   *  3) Patch de bio + links (+ título por coherencia)
+   *  4) Finaliza onboarding
+   *
+   * Si prefieres un solo endpoint “batch”, marca esto en backend y aquí
+   * podemos enviar un solo FormData con todo.
+   */
+  async function submitAll() {
+    if (!userId) return;
 
+    // Validación global antes de enviar
+    const err = validate(true);
+    if (
+      err.foto_perfil ||
+      err.sector_preferencias ||
+      err.titulo_perfil ||
+      err.biografia ||
+      err.links
+    ) {
+      // Si hay errores, regresamos al primer paso con error para que el usuario lo corrija
+      if (err.foto_perfil) setStep(1);
+      else if (err.sector_preferencias || err.titulo_perfil) setStep(2);
+      else if (err.biografia || err.links) setStep(3);
+      return;
+    }
+
+    try {
+      // 1) Foto (si existe)
       if (state.foto_perfil) {
         const fd = new FormData();
         fd.append("foto_perfil", state.foto_perfil);
         await fetch(`${API_BASE}/api/users/${userId}/foto_perfil`, {
           method: "PATCH",
-          headers: {
-            // No seteamos Content-Type en multipart; el navegador lo define.
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` }, // no seteamos Content-Type, el navegador lo hace
           body: fd,
         }).then(handleJson);
       }
-    }
 
-    // Paso 2: sectores + título obligatorios
-    if (current === 2) {
-      const err = validate(false);
-      if (err.sector_preferencias || err.titulo_perfil) return;
-
+      // 2) Sectores + título
       await fetch(`${API_BASE}/api/users/${userId}/sector_preferencias`, {
         method: "PATCH",
         headers: {
@@ -101,13 +129,8 @@ export default function WorkerPost({
           titulo_perfil: state.titulo_perfil,
         }),
       }).then(handleJson);
-    }
 
-    // Paso 3: bio + al menos un link obligatorios
-    if (current === 3) {
-      const err = validate(false);
-      if (err.biografia || err.links) return;
-
+      // 3) Bio + links (+ título por coherencia)
       await fetch(`${API_BASE}/api/users/${userId}/profile`, {
         method: "PATCH",
         headers: {
@@ -120,37 +143,31 @@ export default function WorkerPost({
           titulo_perfil: state.titulo_perfil,
         }),
       }).then(handleJson);
+
+      // 4) Finalizar onboarding
+      await fetch(`${API_BASE}/api/users/${userId}/profile-finalize`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ completed_onboarding: true }),
+      }).then(handleJson);
+
+      if (onFinish) onFinish();
+      else nav("/dashboard");
+    } catch (e) {
+      console.error(e);
+      // El alert ya se muestra en handleJson cuando hay status no-OK
     }
-
-    next();
-  }
-
-  async function submitAll() {
-    if (!userId) return;
-
-    const err = validate(true);
-    if (Object.keys(err).length) return;
-
-    await fetch(`${API_BASE}/api/users/${userId}/profile-finalize`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ completed_onboarding: true }),
-    }).then(handleJson);
-
-    if (onFinish) onFinish();
-    else nav("/dashboard");
   }
 
   if (!token || !userId) {
-    // UI mínima si entra a la ruta sin sesión válida
     return (
       <section className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center px-6">
           <h2 className="text-xl font-semibold">Sesión requerida</h2>
-          <p className="mt-2 text-sm text-foreground-light/70">
+        <p className="mt-2 text-sm text-foreground-light/70">
             Inicia sesión para configurar tu perfil.
           </p>
           <button
@@ -182,7 +199,7 @@ export default function WorkerPost({
           <StepShell
             title="Foto de perfil"
             description="Añade una imagen clara de tu rostro para generar confianza. (Obligatorio)"
-            onNext={() => saveStep(1)}
+            onNext={() => validateAndNext(1)}
             disableNext={false}
           >
             <ImageUploader
@@ -199,7 +216,7 @@ export default function WorkerPost({
             title="Sectores de preferencia y título (obligatorios)"
             description="Elige en qué áreas prefieres trabajar y define un título corto para tu perfil."
             onBack={back}
-            onNext={() => saveStep(2)}
+            onNext={() => validateAndNext(2)}
           >
             <div className="space-y-4">
               <MultiSelectChips
@@ -229,7 +246,7 @@ export default function WorkerPost({
             title="Biografía y enlaces (obligatorios)"
             description="Cuéntales a los contratantes sobre ti y comparte enlaces relevantes."
             onBack={back}
-            onNext={() => saveStep(3)}
+            onNext={() => validateAndNext(3)}
           >
             <div className="space-y-4">
               <TextArea
