@@ -5,11 +5,20 @@ import WorkerRegister from "./Register&Login/register/WorkerRegister";
 import Login from "./Register&Login/login/Login";
 import Protected from "./routes/Protected";
 import OnboardingGate from "./routes/OnboardingGate";
-import { WorkerPost } from "./Register&Login/register/WorkerPost";
+
+// ⬇️ IMPORTA WorkerPost como default (ajusta la ruta si lo tienes en otra carpeta)
+import { WorkerPost } from "./Register&Login/register/WorkerPost"; 
+
+
+import LandingPage from "./landingPage/LandingPage";
+
 
 export default function App() {
   return (
     <Routes>
+      {/* Home */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Auth */}
       <Route path="/register" element={<WorkerRegister />} />
       <Route path="/login" element={<Login />} />
@@ -28,9 +37,11 @@ export default function App() {
         }
       />
 
-      {/* Dashboard y landing (placeholder) */}
+      {/* Dashboard */}
       <Route path="/dashboard" element={<div className="p-6">Dashboard</div>} />
-      <Route path="*" element={<div className="p-6">Landing</div>} />
+
+      {/* 404 */}
+      <Route path="*" element={<div className="p-6">Página no encontrada</div>} />
     </Routes>
   );
 }
