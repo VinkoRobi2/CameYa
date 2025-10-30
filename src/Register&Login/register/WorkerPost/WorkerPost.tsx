@@ -11,7 +11,7 @@ import { useOnboarding } from "./hooks/useOnboarding";
 import { SECTORES } from "./utils/constants";
 import { decodeJWT } from "../../../global_helpers/jwt";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? ""; // ej: https://api.tuapp.com
+import { API_BASE } from "../../../global_helpers/api";
 
 export default function WorkerPost({
   userId: userIdProp,
@@ -25,10 +25,12 @@ export default function WorkerPost({
   const [step, setStep] = useState(1);
   const total = 4;
 
-  // Token + userId desde el JWT (sub)
+  // Token + userId desde el JWT
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
   const claims = decodeJWT(token);
-  const userId = userIdProp ?? (claims?.sub ? String(claims.sub) : undefined);
+  // ✅ Acepta user_id, sub, uid o id
+  const idClaim = (claims?.user_id ?? claims?.sub ?? claims?.uid ?? claims?.id);
+  const userId = userIdProp ?? (idClaim != null ? String(idClaim) : undefined);
 
   // Si no hay token o no hay userId, manda a login
   useEffect(() => {
@@ -138,7 +140,6 @@ export default function WorkerPost({
       body: JSON.stringify({ completed_onboarding: true }),
     }).then(handleJson);
 
-    // Finalizar: si pasó un callback úsalo, si no ve al dashboard
     if (onFinish) onFinish();
     else nav("/dashboard");
   }

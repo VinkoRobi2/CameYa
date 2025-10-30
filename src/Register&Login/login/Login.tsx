@@ -59,8 +59,11 @@ export default function Login() {
         return;
       }
 
-      // Guardar token
+      // Guardar token y respaldo de user_data
       localStorage.setItem("auth_token", token);
+      if (data?.user_data) {
+        localStorage.setItem("auth_user", JSON.stringify(data.user_data));
+      }
 
       // Decodificar claims del JWT
       const claims = decodeJWT(token);
@@ -92,7 +95,7 @@ export default function Login() {
       }
 
       if (!completedOnboarding) {
-        nav("/register/worker/post");
+        nav("/register/worker/post"); // o nav("/onboarding") si prefieres esa ruta
         return;
       }
 
