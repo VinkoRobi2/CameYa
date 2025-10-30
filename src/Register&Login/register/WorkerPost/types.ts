@@ -5,6 +5,8 @@ export type SectorKey =
   | "soporte"
   | "creativo"
   | "servicios"
+  | "limpieza"
+  | "logistica"
   | "otros";
 
 /** Disponibilidad seleccionable en WorkerPost */

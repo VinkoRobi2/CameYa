@@ -49,6 +49,7 @@ export default function WorkerPost({
 
   // Token + userId desde el JWT
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
+  console.log("token:", token);
   const claims = decodeJWT(token);
   const idClaim = claims?.user_id ?? claims?.sub ?? claims?.uid ?? claims?.id;
   const userId = userIdProp ?? (idClaim != null ? String(idClaim) : undefined);
