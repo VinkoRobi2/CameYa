@@ -15,7 +15,7 @@ export default function LandingPage() {
           <Hero />
           <Features />
           <HowTo />
-          <Universities  />
+          <Universities />
         </main>
         <Footer />
       </div>
