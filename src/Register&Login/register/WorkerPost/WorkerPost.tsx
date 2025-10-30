@@ -203,7 +203,7 @@ export default function WorkerPost({
       if (state.foto_perfil) {
         const fd = new FormData();
         fd.append("foto_perfil", state.foto_perfil);
-        await fetch(`${API_BASE}/api/users/${userId}/foto_perfil`, {
+        await fetch(`${API_BASE}/protected/completar-perfil`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` }, // NO pongas Content-Type aquí
           body: fd,
