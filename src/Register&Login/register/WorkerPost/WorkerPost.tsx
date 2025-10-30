@@ -1,4 +1,4 @@
-/* === WorkerPost.tsx (corregido: disponibilidad tipada y type-guard) === */
+/* === WorkerPost.tsx (fix JSON vs multipart, enviar payload único válido) === */
 import { useMemo, useState, useEffect, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Stepper from "./components/Stepper";
@@ -12,18 +12,40 @@ import { useOnboarding } from "./hooks/useOnboarding";
 import { SECTORES } from "./utils/constants";
 import { decodeJWT } from "../../../global_helpers/jwt";
 import { API_BASE } from "../../../global_helpers/api";
-import type { AvailabilityKey } from "./types"; // ⬅️ importa el tipo
+import type { AvailabilityKey } from "./types";
 
-// Opciones de disponibilidad tipadas
+// Disponibilidad mostrada en UI  ->  Valor que espera el backend (ejemplo tuyo)
 const AVAILABILITY_OPTIONS: { value: AvailabilityKey; label: string }[] = [
   { value: "part-time", label: "Parcial (tardes/noches)" },
   { value: "weekends", label: "Fines de semana" },
   { value: "fulltime-short", label: "Tiempo completo (corto)" },
 ];
-
-// Type guard para el <select>
+const AVAILABILITY_MAP: Record<AvailabilityKey, string> = {
+  "part-time": "medio-tiempo",
+  "weekends": "fines-de-semana",
+  "fulltime-short": "tiempo-completo-corto",
+};
 function isAvailabilityKey(v: string): v is AvailabilityKey {
   return v === "part-time" || v === "weekends" || v === "fulltime-short";
+}
+
+// Lee user_id de localStorage.auth_user (fallback a claims)
+function getUserIdFromLocalStorage(): string | undefined {
+  try {
+    const raw = localStorage.getItem("auth_user");
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    const id = parsed?.user_data?.user_id ?? parsed?.user_id ?? parsed?.id ?? parsed?.uid;
+    return id != null ? String(id) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Obtén token normalizado (por si lo guardaron con 'Bearer ')
+function getAuthToken(): string {
+  const raw = localStorage.getItem("auth_token") || "";
+  return raw.replace(/^Bearer\s+/i, "").trim();
 }
 
 export default function WorkerPost({
@@ -47,12 +69,12 @@ export default function WorkerPost({
 
   const [localErr, setLocalErr] = useState<{ habilidades?: string; disponibilidad?: string }>({});
 
-  // Token + userId desde el JWT
-  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "";
-  console.log("token:", token);
+  // Token + userId
+  const token = typeof window !== "undefined" ? getAuthToken() : "";
   const claims = decodeJWT(token);
+  const userIdLS = typeof window !== "undefined" ? getUserIdFromLocalStorage() : undefined;
   const idClaim = claims?.user_id ?? claims?.sub ?? claims?.uid ?? claims?.id;
-  const userId = userIdProp ?? (idClaim != null ? String(idClaim) : undefined);
+  const userId = userIdProp ?? userIdLS ?? (idClaim != null ? String(idClaim) : undefined);
 
   // Si no hay token o no hay userId, manda a login
   useEffect(() => {
@@ -135,7 +157,6 @@ export default function WorkerPost({
       setLocalErr(nextLocalErr);
       if (nextLocalErr.habilidades || nextLocalErr.disponibilidad) return;
 
-      // Persistimos en el store para que aparezca en la revisión
       setState((s) => ({ ...s, habilidades: skillsTags, disponibilidad: availability }));
     }
 
@@ -146,11 +167,9 @@ export default function WorkerPost({
 
   /**
    * ✅ ÚNICO momento en que se llama a la API.
-   * Ejecuta todo al final, en orden:
-   *  1) (opcional) Subida de foto
-   *  2) Patch de sectores + título
-   *  3) Patch de perfil: bio + links + habilidades + disponibilidad (+ título por coherencia)
-   *  4) Finaliza onboarding
+   * 1) Foto (opcional) via multipart/form-data (SIN Content-Type manual)
+   * 2) PATCH JSON a /protected/completar-perfil con todos los campos requeridos por tu handler
+   * 3) Finalizar onboarding (opcional, si tu back lo usa)
    */
   async function submitAll() {
     if (!userId) return;
@@ -180,50 +199,48 @@ export default function WorkerPost({
     }
 
     try {
-      // 1) Foto (si existe)
+      // 1) Foto (si existe): multipart SIN Content-Type
       if (state.foto_perfil) {
         const fd = new FormData();
         fd.append("foto_perfil", state.foto_perfil);
-        await fetch(`${API_BASE}/protected/completar-perfil`, {
+        await fetch(`${API_BASE}/api/users/${userId}/foto_perfil`, {
           method: "PATCH",
-          headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+          headers: { Authorization: `Bearer ${token}` }, // NO pongas Content-Type aquí
           body: fd,
         }).then(handleJson);
       }
 
-      // 2) Sectores + título
-      await fetch(`${API_BASE}/api/users/${userId}/sector_preferencias`, {
+      // 2) Perfil completo en un solo PATCH JSON
+      const linksArray = Object.values(state.links || {})
+        .filter((v): v is string => typeof v === "string" && v.trim() !== "")
+        .map((v) => v.trim());
+
+      const payload = {
+        titulo_perfil: state.titulo_perfil,
+        sector_preferencias: state.sector_preferencias, // []string
+        habilidades: skillsTags, // []string
+        disponibilidad: availability ? AVAILABILITY_MAP[availability] : "", // string esperado por el back
+        biografia: state.biografia,
+        links: linksArray, // []string (NO objeto)
+        perfil_completo:
+          !!state.titulo_perfil &&
+          (state.sector_preferencias?.length ?? 0) > 0 &&
+          skillsTags.length > 0 &&
+          !!availability &&
+          !!state.biografia &&
+          linksArray.length > 0,
+      };
+
+      await fetch(`${API_BASE}/protected/completar-perfil`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          sector_preferencias: state.sector_preferencias,
-          titulo_perfil: state.titulo_perfil,
-        }),
+        body: JSON.stringify(payload),
       }).then(handleJson);
 
-      // 3) Perfil: bio + links + habilidades + disponibilidad (+ título)
-      await fetch(`${API_BASE}/api/users/${userId}/profile`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          biografia: state.biografia,
-          links: state.links,
-          habilidades: skillsTags,
-          disponibilidad: availability,
-          titulo_perfil: state.titulo_perfil,
-        }),
-      }).then(handleJson);
-
-      // 4) Finalizar onboarding
+      // 3) Finalizar onboarding (si tu back lo requiere)
       await fetch(`${API_BASE}/api/users/${userId}/profile-finalize`, {
         method: "PATCH",
         headers: {
