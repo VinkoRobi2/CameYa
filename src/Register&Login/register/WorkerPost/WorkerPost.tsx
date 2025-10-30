@@ -10,7 +10,7 @@ import { useOnboarding } from "./hooks/useOnboarding";
 import { SECTORES } from "./utils/constants";
 
 export default function WorkerPost({ userId, onFinish }: { userId?: string; onFinish?: () => void }) {
-  const { state, errors, setFotoPerfil, toggleSector, setState, setLink, validate } = useOnboarding();
+  const { state, errors, setFotoPerfil, setState, setLink, validate } = useOnboarding();
   const [step, setStep] = useState(1);
   const total = 4;
 

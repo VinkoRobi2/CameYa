@@ -24,7 +24,7 @@ export default function EmployerRegister() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [gigType, setGigType] = useState("general"); // Estado para el tipo de actividad principal
-
+  console.log(setGigType);
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err: Record<string, string> = {};
