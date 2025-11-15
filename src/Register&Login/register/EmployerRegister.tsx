@@ -134,7 +134,7 @@ export default function EmployerRegister() {
     // Validaciones básicas
     if (!orgName.trim()) err.orgName = "Ingresa tus nombres";
     if (!lastName.trim()) err.lastName = "Ingresa tus apellidos";
-    if (!city.trim()) err.city = "Ingresa tu ubicación";
+    if (!city.trim()) err.city = "Ingresa tu ciudad";
     if (!email.trim()) err.email = "Ingresa tu correo electrónico";
     if (!pwd || pwd.length < 8)
       err.pwd = "La contraseña debe tener mínimo 8 caracteres";
@@ -188,7 +188,7 @@ export default function EmployerRegister() {
       telefono: telefonoNormalizado,
       ciudad: ciudadNormalizada,
       fecha_nacimiento: fechaNacimiento || "",
-      tipo_empleador: tipoEmpleadorNormalizado,
+      tipo_identidad: tipoEmpleadorNormalizado,
       terminos_aceptados: true,
       consentimiento: true,
       tipo_actividad: gigType,
