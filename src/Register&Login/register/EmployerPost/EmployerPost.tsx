@@ -109,6 +109,7 @@ export default function EmployerPost() {
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [empresaBio, setEmpresaBio] = useState("");
+  const [empresaHeadline, setEmpresaHeadline] = useState(""); // frase_corta empresa
   const [razonSocial, setRazonSocial] = useState("");
   const [actividadPrincipal, setActividadPrincipal] = useState("");
   const [corporateDomain, setCorporateDomain] = useState("");
@@ -116,7 +117,7 @@ export default function EmployerPost() {
   // Ubicación (compartida)
   const [location, setLocation] = useState("");
 
-  // Áreas de interés (persona)
+  // Áreas de interés / preferencias (compartido persona/empresa)
   const [areasInteres, setAreasInteres] = useState<string[]>([]);
 
   // Enlaces
@@ -313,7 +314,7 @@ export default function EmployerPost() {
             "Sube una foto de perfil de la persona que usa la cuenta.";
         }
         if (!companyName.trim()) {
-          err.companyName = "Ingresa el nombre de la empresa.";
+          err.companyName = "Ingresa el nombre comercial de la empresa.";
         }
         if (!razonSocial.trim()) {
           err.razonSocial = "Ingresa la razón social.";
@@ -329,9 +330,17 @@ export default function EmployerPost() {
           err.location = "Ingresa la ubicación de la empresa.";
         }
       } else if (step === 1) {
+        if (!empresaHeadline.trim()) {
+          err.empresaHeadline =
+            "Escribe una frase corta sobre la empresa.";
+        }
         if (!empresaBio.trim() || empresaBio.trim().length < 40) {
           err.empresaBio =
             "Describe brevemente la empresa (mínimo 40 caracteres).";
+        }
+        if (!areasInteres.length) {
+          err.areasInteres =
+            "Escoge al menos una categoría principal.";
         }
       }
     }
@@ -379,15 +388,15 @@ export default function EmployerPost() {
       }
 
       const payload: any = {
-        // estos campos extra los puede ignorar el backend si solo bindea al struct
+        // Estos campos extra los puede ignorar el backend, pero mantenemos consistencia
         tipo_cuenta: "empleador",
         tipo_empleador: tipoEmpleador,
-        completed_onboarding: true,
       };
 
       if (tipoEmpleador === "persona") {
         // 🔹 Mapea EXACTAMENTE al struct de persona
         payload.foto_perfil = profileBase64 || "";
+        payload.logo_empresa = ""; // persona no usa logo, backend lo setea vacío
         payload.frase_corta = headline.trim();
         payload.biografia = bio.trim();
         payload.ubicacion = location.trim();
@@ -396,22 +405,35 @@ export default function EmployerPost() {
         payload.linkedin = linkedin.trim();
         payload.facebook_ig = socialProfile.trim();
         payload.otros_links = otherLink.trim();
+
+        // Campos empresa los dejamos vacíos, el backend simplemente los ignora
+        payload.dominio_corporativo = "";
+        payload.razon_social = "";
+        payload.area_actividad_principal = "";
+        payload.descripcion_empresa = "";
+        payload.nombre_comercial = "";
       } else {
-        // 🔹 Empresa (añadimos razón social, actividad principal, dominio corporativo y logo)
+        // 🔹 Empresa (mapeo 1:1 a EmployerProfileUpdateRequest)
         payload.foto_perfil = profileBase64 || "";
-        if (logoBase64) {
-          payload.logo_empresa = logoBase64;
-        }
+        payload.logo_empresa = logoBase64 || "";
+        payload.frase_corta = empresaHeadline.trim();
+        // Usamos la misma descripción para biografia y descripcion_empresa
+        payload.biografia = empresaBio.trim();
+        payload.descripcion_empresa = empresaBio.trim();
         payload.ubicacion = location.trim();
-        payload.nombre_empresa = companyName.trim();
-        payload.razon_social = razonSocial.trim();
-        payload.categoria_actividad_principal = actividadPrincipal.trim();
-        payload.website = website.trim();
+        payload.preferencias_categorias = areasInteres;
+        payload.whatsapp = whatsapp.trim();
         payload.linkedin = linkedin.trim();
         payload.facebook_ig = socialProfile.trim();
         payload.otros_links = otherLink.trim();
         payload.dominio_corporativo = corporateDomain.trim();
-        payload.biografia = empresaBio.trim();
+        payload.razon_social = razonSocial.trim();
+        payload.area_actividad_principal = actividadPrincipal.trim();
+        payload.nombre_comercial = companyName.trim();
+
+        // Website se puede agregar luego al struct si quieres persistirlo;
+        // por ahora el backend lo ignorará
+        payload.website = website.trim();
       }
 
       const res = await fetch(ONBOARDING_URL, {
@@ -432,7 +454,7 @@ export default function EmployerPost() {
         return;
       }
 
-      // Actualizar flag en localStorage
+      // Actualizar flag en localStorage si quieres usarlo en el front
       const userRaw = localStorage.getItem("auth_user");
       if (userRaw) {
         try {
@@ -716,7 +738,7 @@ export default function EmployerPost() {
             />
 
             <Input
-              label="Categoría de actividad principal"
+              label="Categoría / área de actividad principal"
               placeholder="Ej: Comercio al por menor, Servicios educativos, etc."
               value={actividadPrincipal}
               onChange={(e) => setActividadPrincipal(e.target.value)}
@@ -746,9 +768,18 @@ export default function EmployerPost() {
       }
 
       if (currentStep === 1) {
-        // Sobre la empresa + enlaces (incluye dominio corporativo)
+        // Sobre la empresa + enlaces (incluye frase corta, categorías y dominio corporativo)
         return (
           <div className="space-y-4">
+            <Input
+              label="Frase corta de la empresa"
+              placeholder='Ej: "Conectamos estudiantes con oportunidades reales"'
+              value={empresaHeadline}
+              onChange={(e) => setEmpresaHeadline(e.target.value)}
+              error={errors.empresaHeadline}
+              required
+            />
+
             <div className="flex flex-col gap-1 text-sm">
               <label className="font-medium">
                 Descripción de la empresa
@@ -762,6 +793,37 @@ export default function EmployerPost() {
               {errors.empresaBio && (
                 <p className="text-xs text-red-600">
                   {errors.empresaBio}
+                </p>
+              )}
+            </div>
+
+            {/* Preferencias / categorías de trabajo (empresa) */}
+            <div className="space-y-2">
+              <p className="text-sm text-foreground-light/80">
+                Áreas principales en las que sueles contratar estudiantes.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {AREAS_INTERES.map((area) => {
+                  const active = areasInteres.includes(area);
+                  return (
+                    <button
+                      key={area}
+                      type="button"
+                      onClick={() => toggleArea(area)}
+                      className={`px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
+                        active
+                          ? "bg-primary text-white border-primary"
+                          : "border-primary/30 text-foreground-light/80 hover:border-primary/60"
+                      }`}
+                    >
+                      {area}
+                    </button>
+                  );
+                })}
+              </div>
+              {errors.areasInteres && (
+                <p className="text-xs text-red-600">
+                  {errors.areasInteres}
                 </p>
               )}
             </div>
@@ -887,6 +949,11 @@ export default function EmployerPost() {
               </>
             ) : (
               <>
+                {empresaHeadline && (
+                  <p className="text-sm font-medium">
+                    {empresaHeadline}
+                  </p>
+                )}
                 {razonSocial && (
                   <p className="text-[11px] text-foreground-light/80">
                     Razón social:{" "}
@@ -905,6 +972,18 @@ export default function EmployerPost() {
                   <p className="mt-1 text-xs text-foreground-light/80 line-clamp-4">
                     {empresaBio}
                   </p>
+                )}
+                {areasInteres.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {areasInteres.map((area) => (
+                      <span
+                        key={area}
+                        className="px-2 py-0.5 rounded-full bg-primary/10 text-[11px] text-primary"
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </>
             )}
