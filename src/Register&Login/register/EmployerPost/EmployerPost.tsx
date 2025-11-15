@@ -72,7 +72,7 @@ const stepsPersona = [
 // 🔹 Empresa: 3 pasos
 const stepsEmpresa = ["Datos empresa", "Sobre la empresa", "Revisión"];
 
-const ONBOARDING_URL = `${API_BASE}/protected/completar-perfil-empleador`; // Ajusta al endpoint real
+const ONBOARDING_URL = `${API_BASE}/protected/completar-perfil-empleador`;
 
 const AREAS_INTERES = [
   "Clases y tutorías",
@@ -109,6 +109,9 @@ export default function EmployerPost() {
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [empresaBio, setEmpresaBio] = useState("");
+  const [razonSocial, setRazonSocial] = useState("");
+  const [actividadPrincipal, setActividadPrincipal] = useState("");
+  const [corporateDomain, setCorporateDomain] = useState("");
 
   // Ubicación (compartida)
   const [location, setLocation] = useState("");
@@ -285,6 +288,13 @@ export default function EmployerPost() {
         if (!companyName.trim()) {
           err.companyName = "Ingresa el nombre de la empresa.";
         }
+        if (!razonSocial.trim()) {
+          err.razonSocial = "Ingresa la razón social.";
+        }
+        if (!actividadPrincipal.trim()) {
+          err.actividadPrincipal =
+            "Ingresa la actividad principal de la empresa.";
+        }
         if (!website.trim()) {
           err.website = "Ingresa la página web de la empresa.";
         }
@@ -336,36 +346,38 @@ export default function EmployerPost() {
         fotoBase64 = await fileToBase64(photoFile);
       }
 
-        const payload: any = {
-            // estos campos extra los puede ignorar el backend si solo bindea al struct
-            tipo_cuenta: "empleador",
-            tipo_empleador: tipoEmpleador,
-            completed_onboarding: true,
-        };
+      const payload: any = {
+        // estos campos extra los puede ignorar el backend si solo bindea al struct
+        tipo_cuenta: "empleador",
+        tipo_empleador: tipoEmpleador,
+        completed_onboarding: true,
+      };
 
-        if (tipoEmpleador === "persona") {
-            // 🔹 Mapea EXACTAMENTE a EmployerProfileUpdateRequest (persona)
-            payload.foto_perfil = fotoBase64 || ""; // evitar null en string
-            payload.frase_corta = headline.trim();
-            payload.biografia = bio.trim();
-            payload.ubicacion = location.trim();
-            payload.preferencias_categorias = areasInteres;
-            payload.whatsapp = whatsapp.trim();
-            payload.linkedin = linkedin.trim();
-            payload.facebook_ig = socialProfile.trim();
-            payload.otros_links = otherLink.trim();
-        } else {
-            // 🔹 Empresa (cuando tengas el struct específico lo ajustas,
-            // aquí ya evitamos nulls también)
-            payload.foto_perfil = fotoBase64 || "";
-            payload.ubicacion = location.trim();
-            payload.nombre_empresa = companyName.trim();
-            payload.website = website.trim();
-            payload.linkedin = linkedin.trim();
-            payload.facebook_ig = socialProfile.trim();
-            payload.otros_links = otherLink.trim();
-            payload.biografia = empresaBio.trim();
-        }
+      if (tipoEmpleador === "persona") {
+        // 🔹 Mapea EXACTAMENTE al struct de persona
+        payload.foto_perfil = fotoBase64 || "";
+        payload.frase_corta = headline.trim();
+        payload.biografia = bio.trim();
+        payload.ubicacion = location.trim();
+        payload.preferencias_categorias = areasInteres;
+        payload.whatsapp = whatsapp.trim();
+        payload.linkedin = linkedin.trim();
+        payload.facebook_ig = socialProfile.trim();
+        payload.otros_links = otherLink.trim();
+      } else {
+        // 🔹 Empresa (añadimos razón social, actividad principal, dominio corporativo)
+        payload.foto_perfil = fotoBase64 || "";
+        payload.ubicacion = location.trim();
+        payload.nombre_empresa = companyName.trim();
+        payload.razon_social = razonSocial.trim();
+        payload.categoria_actividad_principal = actividadPrincipal.trim();
+        payload.website = website.trim();
+        payload.linkedin = linkedin.trim();
+        payload.facebook_ig = socialProfile.trim();
+        payload.otros_links = otherLink.trim();
+        payload.dominio_corporativo = corporateDomain.trim();
+        payload.biografia = empresaBio.trim();
+      }
 
       const res = await fetch(ONBOARDING_URL, {
         method: "PATCH",
@@ -416,8 +428,7 @@ export default function EmployerPost() {
     .join(" ");
 
   const publicPersonaName =
-    fullPrivateName ||
-    (privateName ? privateName : "Tu nombre");
+    fullPrivateName || (privateName ? privateName : "Tu nombre");
 
   const publicPersonaNameShort = `${publicPersonaName} ${
     privateLastName ? `${privateLastName.charAt(0).toUpperCase()}.` : ""
@@ -498,8 +509,8 @@ export default function EmployerPost() {
               required
             />
             <p className="text-xs text-foreground-light/70">
-              Esta ubicación ayuda a que los estudiantes sepan en qué zona se realizarían
-              los trabajos presenciales.
+              Esta ubicación ayuda a que los estudiantes sepan en qué zona se
+              realizarían los trabajos presenciales.
             </p>
           </div>
         );
@@ -510,7 +521,8 @@ export default function EmployerPost() {
         return (
           <div className="space-y-4">
             <p className="text-sm text-foreground-light/80">
-              Escoge las áreas de trabajo principales para las que sueles buscar estudiantes.
+              Escoge las áreas de trabajo principales para las que sueles
+              buscar estudiantes.
             </p>
             <div className="flex flex-wrap gap-2">
               {AREAS_INTERES.map((area) => {
@@ -581,7 +593,7 @@ export default function EmployerPost() {
     } else {
       // 🔹 FLUJO EMPRESA
       if (currentStep === 0) {
-        // Datos empresa
+        // Datos empresa (incluyendo razón social y actividad principal)
         return (
           <div className="space-y-4">
             <div>
@@ -613,11 +625,29 @@ export default function EmployerPost() {
             </div>
 
             <Input
-              label="Nombre de la empresa"
+              label="Nombre comercial de la empresa"
               placeholder="Ej: Panadería Buen Pan"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               error={errors.companyName}
+              required
+            />
+
+            <Input
+              label="Razón social"
+              placeholder="Ej: PANES DEL PACÍFICO S.A."
+              value={razonSocial}
+              onChange={(e) => setRazonSocial(e.target.value)}
+              error={errors.razonSocial}
+              required
+            />
+
+            <Input
+              label="Categoría de actividad principal"
+              placeholder="Ej: Comercio al por menor, Servicios educativos, etc."
+              value={actividadPrincipal}
+              onChange={(e) => setActividadPrincipal(e.target.value)}
+              error={errors.actividadPrincipal}
               required
             />
 
@@ -643,7 +673,7 @@ export default function EmployerPost() {
       }
 
       if (currentStep === 1) {
-        // Sobre la empresa + enlaces
+        // Sobre la empresa + enlaces (incluye dominio corporativo)
         return (
           <div className="space-y-4">
             <div className="flex flex-col gap-1 text-sm">
@@ -662,6 +692,13 @@ export default function EmployerPost() {
                 </p>
               )}
             </div>
+
+            <Input
+              label="Dominio corporativo (opcional)"
+              placeholder="Ej: empresa.com o @empresa.com"
+              value={corporateDomain}
+              onChange={(e) => setCorporateDomain(e.target.value)}
+            />
 
             <Input
               label="LinkedIn de la empresa (opcional)"
@@ -700,8 +737,8 @@ export default function EmployerPost() {
             Vista previa de tu perfil
           </h2>
           <p className="text-xs text-foreground-light/70">
-            Esto es un aproximado de cómo se verá tu perfil público para los estudiantes
-            y cómo verás tú tus datos internos no públicos.
+            Esto es un aproximado de cómo se verá tu perfil público para los
+            estudiantes y cómo verás tú tus datos internos no públicos.
           </p>
         </div>
 
@@ -713,9 +750,11 @@ export default function EmployerPost() {
                 <img
                   src={photoPreview}
                   alt="Avatar"
-                  className={isPersona
-                    ? "w-12 h-12 rounded-full object-cover border border-primary/40"
-                    : "w-12 h-12 rounded-lg object-cover border border-primary/40"}
+                  className={
+                    isPersona
+                      ? "w-12 h-12 rounded-full object-cover border border-primary/40"
+                      : "w-12 h-12 rounded-lg object-cover border border-primary/40"
+                  }
                 />
               ) : (
                 <div
@@ -774,8 +813,21 @@ export default function EmployerPost() {
               </>
             ) : (
               <>
+                {razonSocial && (
+                  <p className="text-[11px] text-foreground-light/80">
+                    Razón social: <span className="font-medium">{razonSocial}</span>
+                  </p>
+                )}
+                {actividadPrincipal && (
+                  <p className="text-[11px] text-foreground-light/80">
+                    Actividad principal:{" "}
+                    <span className="font-medium">
+                      {actividadPrincipal}
+                    </span>
+                  </p>
+                )}
                 {empresaBio && (
-                  <p className="text-xs text-foreground-light/80 line-clamp-4">
+                  <p className="mt-1 text-xs text-foreground-light/80 line-clamp-4">
                     {empresaBio}
                   </p>
                 )}
@@ -784,28 +836,37 @@ export default function EmployerPost() {
 
             {/* Contacto visible */}
             <div className="mt-1 border-t border-primary/10 pt-2">
-            <p className="text-xs font-semibold mb-1">
+              <p className="text-xs font-semibold mb-1">
                 Los medios de contacto y verificación pública que posees.
-            </p>
+              </p>
 
-            {whatsapp || linkedin || socialProfile || otherLink ? (
+              {whatsapp ||
+              linkedin ||
+              socialProfile ||
+              otherLink ||
+              (!isPersona && corporateDomain) ? (
                 <ul className="space-y-1 text-[11px] text-foreground-light/80">
-                {whatsapp && <li>• WhatsApp conectado</li>}
-                {linkedin && <li>• LinkedIn añadido</li>}
-                {socialProfile && <li>• Facebook / Instagram añadido</li>}
-                {otherLink && <li>• Otro enlace añadido</li>}
+                  {whatsapp && <li>• WhatsApp conectado</li>}
+                  {linkedin && <li>• LinkedIn añadido</li>}
+                  {socialProfile && (
+                    <li>• Facebook / Instagram añadido</li>
+                  )}
+                  {otherLink && <li>• Otro enlace añadido</li>}
+                  {!isPersona && corporateDomain && (
+                    <li>• Dominio corporativo añadido</li>
+                  )}
                 </ul>
-            ) : (
+              ) : (
                 <ul className="space-y-1 text-[11px] text-foreground-light/80">
-                <li>• Aún no has añadido enlaces visibles.</li>
+                  <li>• Aún no has añadido enlaces visibles.</li>
                 </ul>
-            )}
+              )}
             </div>
 
             <p className="mt-1 text-[10px] text-foreground-light/60">
-              Esta tarjeta representa lo que verán los estudiantes al entrar a tu
-              perfil (sin mostrar datos sensibles como cédula, correo o dirección
-              exacta).
+              Esta tarjeta representa lo que verán los estudiantes al entrar a
+              tu perfil (sin mostrar datos sensibles como cédula, correo o
+              dirección exacta).
             </p>
           </div>
 
@@ -852,13 +913,31 @@ export default function EmployerPost() {
                 </p>
                 <p>{whatsapp || privatePhone || "—"}</p>
               </div>
+
+              {!isPersona && (
+                <>
+                  <div>
+                    <p className="font-semibold">Razón social</p>
+                    <p>{razonSocial || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Actividad principal</p>
+                    <p>{actividadPrincipal || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Dominio corporativo</p>
+                    <p>{corporateDomain || "—"}</p>
+                  </div>
+                </>
+              )}
             </div>
 
             <p className="mt-2 text-[10px] text-foreground-light/60">
-              Estos datos se usan para verificar tu identidad y ayudarte a gestionar
-              tus publicaciones, pero no se exponen en el perfil público tal cual.
-              CameYa puede usar parte de esta información para mantener segura la
-              comunidad (por ejemplo, verificaciones internas o soporte).
+              Estos datos se usan para verificar tu identidad y ayudarte a
+              gestionar tus publicaciones, pero no se exponen en el perfil
+              público tal cual. CameYa puede usar parte de esta información para
+              mantener segura la comunidad (por ejemplo, verificaciones internas
+              o soporte).
             </p>
           </div>
         </div>
@@ -877,8 +956,8 @@ export default function EmployerPost() {
               Configura tu perfil de empleador
             </h1>
             <p className="mt-2 text-sm text-foreground-light/70 dark:text-foreground-dark/70">
-              Completa estos pasos para que los estudiantes sepan con quién
-              van a trabajar.
+              Completa estos pasos para que los estudiantes sepan con quién van
+              a trabajar.
             </p>
           </div>
 
