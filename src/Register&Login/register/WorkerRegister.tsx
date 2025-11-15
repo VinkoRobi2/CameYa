@@ -9,6 +9,7 @@ const UNIVERSITY = "ESPOL";
 
 export default function WorkerRegister() {
   const navigate = useNavigate();
+  const kurac = 6
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [cedula, setCedula] = useState("");
@@ -107,6 +108,8 @@ export default function WorkerRegister() {
       fecha_nacimiento: fechaNacimiento,
       carrera,
       universidad: UNIVERSITY,
+      // Enviar siempre foto de perfil como cadena vacía
+      foto_perfil: "",
     };
 
     try {

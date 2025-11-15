@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import axios from "axios";
 import Input from "../../Register&Login/components/Input";
 import { Link, useNavigate } from "react-router-dom";
@@ -44,7 +44,7 @@ export default function EmployerRegister() {
   const [razonSocial, setRazonSocial] = useState("");
   const [preferenciasCategorias, setPreferenciasCategorias] = useState("");
   const [tipoIdentidad, setTipoIdentidad] = useState("");
-  const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
+  // la foto ya no se guarda en estado; siempre se enviará como cadena vacía
   const [agree, setAgree] = useState(false);
   const [verify, setVerify] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -52,6 +52,35 @@ export default function EmployerRegister() {
 
   const [gigType, setGigType] = useState("general");
   console.log(setGigType);
+
+  const totalSteps = 10;
+  const completedSteps = useMemo(() => {
+    let done = 0;
+    if (orgName.trim()) done++;
+    if (lastName.trim()) done++;
+    if (city.trim()) done++;
+    if (email.trim()) done++;
+    if (pwd && pwd.length >= 8) done++;
+    if (phone.trim()) done++;
+    if (cedulaRuc.trim() && cedulaRuc.length >= 10 && cedulaRuc.length <= 13) done++;
+    if (fechaNacimiento && isValidDate(fechaNacimiento) && isAtLeast18(fechaNacimiento)) done++;
+    if (dominio.trim()) done++;
+    if (razonSocial.trim()) done++;
+    return done;
+  }, [
+    orgName,
+    lastName,
+    city,
+    email,
+    pwd,
+    phone,
+    cedulaRuc,
+    fechaNacimiento,
+    dominio,
+    razonSocial,
+  ]);
+
+  const percent = Math.round((completedSteps / totalSteps) * 100);
 
   // Función para validar edad mínima (18 años)
   const isAtLeast18 = (dateString: string): boolean => {
@@ -88,7 +117,7 @@ export default function EmployerRegister() {
     if (!pwd || pwd.length < 8) err.pwd = "La contraseña debe tener mínimo 8 caracteres";
     if (!verify) err.verify = "Debes confirmar tu identidad";
     if (!agree) err.agree = "Debes aceptar los Términos y la Política";
-    if (!fotoPerfil) err.fotoPerfil = "La foto de perfil es obligatoria";
+    // La foto de perfil ya no es obligatoria ni se valida aquí; se enviará como string vacío
 
     // Validaciones de cédula/RUC
     if (cedulaRuc.trim()) {
@@ -121,14 +150,15 @@ export default function EmployerRegister() {
 
     // Codificar la foto de perfil a Base64
     let fotoPerfilBase64 = "";
-    if (fotoPerfil) {
+    // Si en el futuro se decide manejar la foto de perfil, descomentar y ajustar lógica aquí
+    /* if (fotoPerfil) {
       try {
         fotoPerfilBase64 = await fileToBase64(fotoPerfil);
       } catch {
         setErrors({ fotoPerfil: "No se pudo procesar la foto de perfil" });
         return;
       }
-    }
+    } */
 
     const data = {
       nombre: nombreNormalizado || "",
@@ -139,7 +169,7 @@ export default function EmployerRegister() {
       cedula_ruc: cedulaRucNormalizada,
       telefono: telefonoNormalizado,
       ciudad: ciudadNormalizada,
-      foto_perfil: fotoPerfilBase64,
+      // foto_perfil: fotoPerfilBase64, // Enviar como cadena vacía si no hay foto
       tipo_identidad: tipoIdentidadNormalizada || "",
       preferencias_categorias: preferenciasNormalizadas || "",
       dominio_corporativo: dominioNormalizado || "",
@@ -202,42 +232,62 @@ export default function EmployerRegister() {
           </p>
         </div>
 
+        {/* Progreso */}
+        <div className="mb-6">
+          <div className="flex justify-between text-xs mb-1">
+            <span>Progreso</span>
+            <span>{percent}%</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-primary/10 overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${percent}%` }}
+              role="progressbar"
+              aria-valuenow={percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
+        </div>
+
         <form onSubmit={onSubmit} className="space-y-4">
-          <Input
-            label="Nombre de organización o persona"
-            placeholder="Ej: Club de Economía ESPOL"
-            value={orgName}
-            onChange={(e) => setOrgName(e.target.value)}
-            error={errors.orgName}
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              label="Nombre de organización o persona"
+              placeholder="Ej: Club de Economía ESPOL"
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              error={errors.orgName}
+              required
+            />
+            <Input
+              label="Apellido (si lo tienes)"
+              placeholder="Ej: Pérez"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              error={errors.lastName}
+            />
+          </div>
 
-          <Input
-            label="Apellido (si lo tienes)"
-            placeholder="Ej: Pérez"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            error={errors.lastName}
-          />
-
-          <Input
-            label="Ciudad"
-            placeholder="Ej: Guayaquil"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            error={errors.city}
-            required
-          />
-
-          <Input
-            label="Correo electrónico"
-            type="email"
-            placeholder="usuario@gmail.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={errors.email}
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              label="Ciudad"
+              placeholder="Ej: Guayaquil"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              error={errors.city}
+              required
+            />
+            <Input
+              label="Correo electrónico"
+              type="email"
+              placeholder="usuario@gmail.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={errors.email}
+              required
+            />
+          </div>
 
           <Input
             label="Contraseña"
@@ -306,18 +356,6 @@ export default function EmployerRegister() {
             onChange={(e) => setTipoIdentidad(e.target.value)}
           />
 
-          <label className="block text-left w-full">
-            <span className="block mb-1 text-sm font-semibold">Foto de perfil</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setFotoPerfil(e.target.files ? e.target.files[0] : null)}
-              required
-            />
-          </label>
-          {errors.fotoPerfil && (
-            <p className="text-xs text-red-600 -mt-2">{errors.fotoPerfil}</p>
-          )}
 
           <label className="flex items-start gap-3 text-sm">
             <input
