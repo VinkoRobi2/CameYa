@@ -50,7 +50,8 @@ export default function ChooseRegister() {
         </div>
 
         <p className="text-xs mt-5 text-center text-foreground-light/60 dark:text-foreground-dark/60">
-          Registro habilitado únicamente con correo institucional <strong>.edu.ec</strong>.
+          Registro habilitado únicamente con correo institucional <strong>.edu.ec</strong> para estudiantes.
+          
         </p>
       </div>
     </section>
