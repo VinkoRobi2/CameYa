@@ -17,6 +17,7 @@ type LoginResponse = {
     email?: string;
     email_verificado?: boolean;
     completed_onboarding?: boolean;
+    // si en el futuro agregas tipo_empleador aquí no pasa nada malo
   };
   message?: string;
 };
@@ -84,20 +85,34 @@ export default function Login() {
         false;
 
       const completedOnboarding =
-        (claims?.completed_onboarding as boolean | undefined) ?? ud?.completed_onboarding ?? false;
+        (claims?.completed_onboarding as boolean | undefined) ??
+        ud?.completed_onboarding ??
+        false;
 
-      // Redirecciones (sin /me)
+      const tipoCuenta =
+        (claims?.tipo_cuenta as string | undefined) ??
+        (ud?.tipo_cuenta as string | undefined) ??
+        "";
+
+      // 🔐 Email no verificado
       if (!emailVerificado) {
         const emailFrom = (claims?.email as string) ?? (ud?.email as string) ?? email;
         nav("/check-email", { state: { email: emailFrom } });
         return;
       }
 
+      // 🔄 Onboarding pendiente → depende del tipo de cuenta
       if (!completedOnboarding) {
-        nav("/register/worker/post");
+        if (tipoCuenta === "empleador") {
+          nav("/register/employer/post");
+        } else {
+          // estudiante, worker, etc.
+          nav("/register/worker/post");
+        }
         return;
       }
 
+      // ✅ Todo listo → dashboard
       nav("/dashboard");
     } catch (e: any) {
       console.error(e);

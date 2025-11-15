@@ -9,6 +9,7 @@ import TermsAndPriv from "./global/Terms&Priv";
 import Contact from "./global/Contact";
 import EmployerRegister from "./Register&Login/register/EmployerRegister";
 import Confirmacion_Email from "./Register&Login/register/Confirmacion_Email";
+import EmployerPost from "./Register&Login/register/EmployerPost/EmployerPost";
 
 // Exportas WorkerPost como named export desde index.ts de su carpeta
 import { WorkerPost } from "./Register&Login/register/WorkerPost";
@@ -59,6 +60,20 @@ export default function App() {
           </Protected>
         }
       />
+
+
+      {/* Alias usado tras el login: /register/employer/post */}
+      <Route
+        path="/register/employer/post"
+        element={
+          <Protected>
+            <OnboardingGate>
+              <EmployerPost />
+            </OnboardingGate>
+          </Protected>
+        }
+      />
+
 
       {/* Dashboard */}
       <Route path="/dashboard" element={<div className="p-6">Dashboard</div>} />
