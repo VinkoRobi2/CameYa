@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
-import { REGISTER_URL } from "../../global_helpers/api";
-
+import { RESEND_VERIFICATION_URL } from "../../global_helpers/api";
 export default function EmailConfirmation() {
   const location = useLocation();
   const email = location.state?.email || "";
@@ -15,7 +14,7 @@ export default function EmailConfirmation() {
     setResendLoading(true);
     try {
       // Ajusta esta URL según tu backend
-      await axios.post(`${REGISTER_URL}/resend-verification`, { email });
+      await axios.post(`${RESEND_VERIFICATION_URL}`, { email });
       setResendMessage("✓ Correo reenviado exitosamente");
     } catch (error: any) {
       const msg = error?.response?.data?.message || "No se pudo reenviar el correo";
