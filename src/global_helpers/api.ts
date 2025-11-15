@@ -1,4 +1,4 @@
-export const API_BASE = "https://3f652868a825.ngrok-free.app";
+export const API_BASE = "https://c1fcd48bc070.ngrok-free.app";
 
 // Auth & user
 export const REGISTER_URL = `${API_BASE}/register`;

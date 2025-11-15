@@ -7,6 +7,8 @@ import Protected from "./routes/Protected";
 import OnboardingGate from "./routes/OnboardingGate";
 import TermsAndPriv from "./global/Terms&Priv";
 import Contact from "./global/Contact";
+import EmployerRegister from "./Register&Login/register/EmployerRegister";
+import Confirmacion_Email from "./Register&Login/register/Confirmacion_Email";
 
 // Exportas WorkerPost como named export desde index.ts de su carpeta
 import { WorkerPost } from "./Register&Login/register/WorkerPost";
@@ -26,7 +28,8 @@ export default function App() {
       {/* Registro */}
       <Route path="/register" element={<ChooseRegister />} />
       <Route path="/register/worker" element={<WorkerRegister />} />
-      {/* <Route path="/register/employer" element={<EmployerRegister />} /> */}
+      <Route path="/register/employer" element={<EmployerRegister />} />
+      <Route path="/register/email-confirmation" element={<Confirmacion_Email />} />
 
       {/* Auth */}
       <Route path="/login" element={<Login />} />

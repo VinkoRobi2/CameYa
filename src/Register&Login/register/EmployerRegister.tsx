@@ -1,53 +1,129 @@
 import { useState } from "react";
 import axios from "axios";
 import Input from "../../Register&Login/components/Input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { REGISTER_URL } from "../../global_helpers/api";
 
+// Primera letra de cada palabra en mayúscula, resto minúscula
+// "mARiA péReZ" -> "Maria Pérez"
+function formatTitleCase(str: string): string {
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Email en minúsculas, sin espacios
+function normalizeEmail(str: string): string {
+  return str.trim().toLowerCase();
+}
+
+// Dominio en minúsculas, sin espacios
+function normalizeDomain(str: string): string {
+  return str.trim().toLowerCase();
+}
+
+// Texto genérico solo sin espacios extremos
+function normalizeGeneric(str: string): string {
+  return str.trim();
+}
+
 export default function EmployerRegister() {
+  const navigate = useNavigate();
+  
   const [orgName, setOrgName] = useState("");
-  const [lastName, setLastName] = useState(""); // Apellido
+  const [lastName, setLastName] = useState(""); 
   const [city, setCity] = useState("");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
   const [phone, setPhone] = useState("");
-  const [cedulaRuc, setCedulaRuc] = useState(""); // Cedula RUC
-  const [fechaNacimiento, setFechaNacimiento] = useState(""); // Fecha de nacimiento
+  const [cedulaRuc, setCedulaRuc] = useState(""); 
+  const [fechaNacimiento, setFechaNacimiento] = useState("");
 
-  const [dominio, setDominio] = useState(""); // Dominio corporativo
-  const [razonSocial, setRazonSocial] = useState(""); // Razon Social
-  const [preferenciasCategorias, setPreferenciasCategorias] = useState(""); // Preferencias categorías
-  const [tipoIdentidad, setTipoIdentidad] = useState(""); // Tipo identidad
-  const [fotoPerfil, setFotoPerfil] = useState<File | null>(null); // Foto de perfil
+  const [dominio, setDominio] = useState("");
+  const [razonSocial, setRazonSocial] = useState("");
+  const [preferenciasCategorias, setPreferenciasCategorias] = useState("");
+  const [tipoIdentidad, setTipoIdentidad] = useState("");
+  const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
   const [agree, setAgree] = useState(false);
   const [verify, setVerify] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
-  const [gigType, setGigType] = useState("general"); // Estado para el tipo de actividad principal
+  const [gigType, setGigType] = useState("general");
   console.log(setGigType);
+
+  // Función para validar edad mínima (18 años)
+  const isAtLeast18 = (dateString: string): boolean => {
+    if (!dateString) return false;
+    const birthDate = new Date(dateString);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      return age - 1 >= 18;
+    }
+    return age >= 18;
+  };
+
+  // Función para validar que la fecha no sea exageradamente futura
+  const isValidDate = (dateString: string): boolean => {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const today = new Date();
+    const maxYear = today.getFullYear() + 5; // No permite fechas 5+ años en el futuro
+    
+    return date.getFullYear() <= maxYear;
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err: Record<string, string> = {};
 
-    // Validaciones
+    // Validaciones básicas
     if (!orgName.trim()) err.orgName = "Ingresa el nombre de la organización o persona";
     if (!city.trim()) err.city = "Selecciona tu ciudad";
-    if (!email) err.email = "Ingresa tu correo electrónico";
+    if (!email.trim()) err.email = "Ingresa tu correo electrónico";
     if (!pwd || pwd.length < 8) err.pwd = "La contraseña debe tener mínimo 8 caracteres";
     if (!verify) err.verify = "Debes confirmar tu identidad";
     if (!agree) err.agree = "Debes aceptar los Términos y la Política";
     if (!fotoPerfil) err.fotoPerfil = "La foto de perfil es obligatoria";
+
+    // Validaciones de cédula/RUC
+    if (cedulaRuc.trim()) {
+      if (cedulaRuc.length < 10 || cedulaRuc.length > 13) 
+        err.cedulaRuc = "La cédula/RUC debe tener entre 10 y 13 caracteres";
+    }
+
+    // Validaciones de fecha de nacimiento
+    if (fechaNacimiento) {
+      if (!isValidDate(fechaNacimiento)) 
+        err.fechaNacimiento = "La fecha no puede ser tan lejana";
+      else if (!isAtLeast18(fechaNacimiento)) 
+        err.fechaNacimiento = "Debes tener al menos 18 años";
+    }
+
     setErrors(err);
     if (Object.keys(err).length) return;
 
-    const [nombre, ...rest] = orgName.trim().split(/\s+/);
-    const apellido = rest.join(" ");
+    // 🔹 NORMALIZACIONES ANTES DE ENVIAR AL BACKEND
+    const nombreNormalizado = formatTitleCase(orgName);      // nombre
+    const apellidoNormalizado = formatTitleCase(lastName);   // apellido
+    const ciudadNormalizada = formatTitleCase(city);         // ciudad
+    const emailNormalizado = normalizeEmail(email);          // email
+    const dominioNormalizado = normalizeDomain(dominio);     // dominio
+    const razonSocialNormalizada = formatTitleCase(razonSocial); // razón social
+    const tipoIdentidadNormalizada = formatTitleCase(tipoIdentidad); // tipo identidad
+    const preferenciasNormalizadas = normalizeGeneric(preferenciasCategorias);
+    const telefonoNormalizado = normalizeGeneric(phone);
+    const cedulaRucNormalizada = normalizeGeneric(cedulaRuc);
 
     // Codificar la foto de perfil a Base64
     let fotoPerfilBase64 = "";
     if (fotoPerfil) {
       try {
-        fotoPerfilBase64 = await fileToBase64(fotoPerfil); // Convertir archivo a Base64
+        fotoPerfilBase64 = await fileToBase64(fotoPerfil);
       } catch {
         setErrors({ fotoPerfil: "No se pudo procesar la foto de perfil" });
         return;
@@ -55,33 +131,38 @@ export default function EmployerRegister() {
     }
 
     const data = {
-      nombre: nombre || "",
-      apellido: apellido || "",
-      email,
+      nombre: nombreNormalizado || "",
+      apellido: apellidoNormalizado || "",
+      email: emailNormalizado,
       password: pwd,
       tipo_cuenta: "empleador",
-      cedula_ruc: cedulaRuc,
-      telefono: phone,
-      ciudad: city,
-      foto_perfil: fotoPerfilBase64, // Foto codificada en Base64
-      tipo_identidad: tipoIdentidad || "", // Si existe
-      preferencias_categorias: preferenciasCategorias || "",
-      dominio_corporativo: dominio || "",
-      razon_social: razonSocial || "",
-      fecha_nacimiento: fechaNacimiento || "", // Incluir la fecha de nacimiento
-      terminos_aceptados: true, // Siempre aceptado
-      consentimiento: true, // Siempre consentido
-      tipo_actividad: gigType, // Tipo de actividad principal
+      cedula_ruc: cedulaRucNormalizada,
+      telefono: telefonoNormalizado,
+      ciudad: ciudadNormalizada,
+      foto_perfil: fotoPerfilBase64,
+      tipo_identidad: tipoIdentidadNormalizada || "",
+      preferencias_categorias: preferenciasNormalizadas || "",
+      dominio_corporativo: dominioNormalizado || "",
+      razon_social: razonSocialNormalizada || "",
+      fecha_nacimiento: fechaNacimiento || "",
+      terminos_aceptados: true,
+      consentimiento: true,
+      tipo_actividad: gigType,
     };
 
     try {
+      setLoading(true);
       const response = await axios.post(REGISTER_URL, data, {
         headers: {
           "Content-Type": "application/json",
         },
       });
       console.log("Registro exitoso", response.data);
-      alert("Registro exitoso. Por favor, verifica tu correo.");
+      
+      // Redirigir a la página de confirmación
+      navigate("/register/email-confirmation", { 
+        state: { email: emailNormalizado } 
+      });
     } catch (error: any) {
       const msg =
         error?.response?.data?.message ||
@@ -89,6 +170,8 @@ export default function EmployerRegister() {
         error?.message ||
         "No se pudo completar el registro";
       alert(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -111,7 +194,9 @@ export default function EmployerRegister() {
         </div>
 
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl font-semibold tracking-tight">Crear cuenta — Buscar trabajadores</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">
+            Crear cuenta — Buscar trabajadores
+          </h1>
           <p className="mt-2 text-sm text-foreground-light/70 dark:text-foreground-dark/70">
             Los datos serán verificados para mantener segura la comunidad CameYa.
           </p>
@@ -177,7 +262,8 @@ export default function EmployerRegister() {
             type="text"
             placeholder="Ej: 0991234560001"
             value={cedulaRuc}
-            onChange={(e) => setCedulaRuc(e.target.value)}
+            onChange={(e) => setCedulaRuc(e.target.value.replace(/\D/g, "").slice(0, 13))}
+            error={errors.cedulaRuc}
           />
 
           <Input
@@ -185,6 +271,7 @@ export default function EmployerRegister() {
             type="date"
             value={fechaNacimiento}
             onChange={(e) => setFechaNacimiento(e.target.value)}
+            error={errors.fechaNacimiento}
           />
 
           <Input
@@ -228,7 +315,9 @@ export default function EmployerRegister() {
               required
             />
           </label>
-          {errors.fotoPerfil && <p className="text-xs text-red-600 -mt-2">{errors.fotoPerfil}</p>}
+          {errors.fotoPerfil && (
+            <p className="text-xs text-red-600 -mt-2">{errors.fotoPerfil}</p>
+          )}
 
           <label className="flex items-start gap-3 text-sm">
             <input
@@ -237,9 +326,13 @@ export default function EmployerRegister() {
               checked={verify}
               onChange={(e) => setVerify(e.target.checked)}
             />
-            <span>Confirmo que mi información es verídica y entiendo que CameYa revisa perfiles para evitar fraudes.</span>
+            <span>
+              Confirmo que mi información es verídica y entiendo que CameYa revisa perfiles para evitar fraudes.
+            </span>
           </label>
-          {errors.verify && <p className="text-xs text-red-600 -mt-2">{errors.verify}</p>}
+          {errors.verify && (
+            <p className="text-xs text-red-600 -mt-2">{errors.verify}</p>
+          )}
 
           <label className="flex items-start gap-3 text-sm">
             <input
@@ -250,18 +343,25 @@ export default function EmployerRegister() {
             />
             <span>
               Acepto los{" "}
-              <a href="/terms" className="text-primary font-semibold hover:underline">Términos</a>{" "}
+              <a href="/terms" className="text-primary font-semibold hover:underline">
+                Términos
+              </a>{" "}
               y la{" "}
-              <a href="/terms" className="text-primary font-semibold hover:underline">Política de Privacidad</a>.
+              <a href="/terms" className="text-primary font-semibold hover:underline">
+                Política de Privacidad
+              </a>.
             </span>
           </label>
-          {errors.agree && <p className="text-xs text-red-600 -mt-2">{errors.agree}</p>}
+          {errors.agree && (
+            <p className="text-xs text-red-600 -mt-2">{errors.agree}</p>
+          )}
 
           <button
             type="submit"
-            className="w-full h-11 rounded-full bg-primary text-white font-semibold hover:opacity-90 transition-opacity"
+            disabled={loading}
+            className="w-full h-11 rounded-full bg-primary text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
           >
-            Crear cuenta
+            {loading ? "Enviando..." : "Crear cuenta"}
           </button>
         </form>
       </div>
