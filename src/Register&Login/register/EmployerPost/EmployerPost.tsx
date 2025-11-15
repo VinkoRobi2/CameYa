@@ -125,9 +125,13 @@ export default function EmployerPost() {
   const [socialProfile, setSocialProfile] = useState(""); // Facebook o Instagram
   const [otherLink, setOtherLink] = useState("");
 
-  // Foto / logo
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  // Fotos: perfil (persona/empresa) y logo (solo empresa)
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(
+    null
+  );
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Datos privados del user (para vista privada)
   const [privateName, setPrivateName] = useState("");
@@ -157,7 +161,7 @@ export default function EmployerPost() {
           return;
         }
 
-        // Tipo de empleador
+        // Tipo de empleador principal
         const t =
           (u.tipo_empleador as string | undefined) ??
           (u.tipo_identidad as string | undefined);
@@ -167,6 +171,9 @@ export default function EmployerPost() {
           if (normalized === "persona" || normalized === "empresa") {
             setTipoEmpleador(normalized as EmployerType);
           }
+        } else if (u.tipo_cuenta === "empleador") {
+          // Fallback: si solo sabemos que es empleador, asumimos empresa
+          setTipoEmpleador("empresa");
         }
 
         // Datos privados
@@ -184,6 +191,10 @@ export default function EmployerPost() {
           setPrivateCedulaRuc(u.cedula);
         } else if (typeof u.ruc === "string") {
           setPrivateCedulaRuc(u.ruc);
+        }
+
+        if (typeof u.foto_perfil === "string" && u.foto_perfil) {
+          setProfilePhotoPreview(u.foto_perfil);
         }
 
         // Prefill ubicación si la tienes
@@ -207,6 +218,8 @@ export default function EmployerPost() {
         if (normalized === "persona" || normalized === "empresa") {
           setTipoEmpleador(normalized as EmployerType);
         }
+      } else if (claims?.tipo_cuenta === "empleador") {
+        setTipoEmpleador("empresa");
       }
 
       if (claims?.nombre && typeof claims.nombre === "string") {
@@ -225,17 +238,27 @@ export default function EmployerPost() {
       if (claims?.cedula_ruc && typeof claims.cedula_ruc === "string") {
         setPrivateCedulaRuc(claims.cedula_ruc);
       }
+      if (claims?.foto_perfil && typeof claims.foto_perfil === "string") {
+        setProfilePhotoPreview(claims.foto_perfil);
+      }
       if (claims?.ciudad && typeof claims.ciudad === "string") {
         setLocation(claims.ciudad);
       }
     }
   }, [navigate]);
 
-  const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    setProfilePhotoFile(file);
+    setProfilePhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
   };
 
   const toggleArea = (area: string) => {
@@ -285,6 +308,10 @@ export default function EmployerPost() {
     } else {
       // 🔹 empresa
       if (step === 0) {
+        if (!profilePhotoFile && !profilePhotoPreview) {
+          err.profilePhoto =
+            "Sube una foto de perfil de la persona que usa la cuenta.";
+        }
         if (!companyName.trim()) {
           err.companyName = "Ingresa el nombre de la empresa.";
         }
@@ -341,9 +368,14 @@ export default function EmployerPost() {
         return;
       }
 
-      let fotoBase64: string | null = null;
-      if (photoFile) {
-        fotoBase64 = await fileToBase64(photoFile);
+      let profileBase64: string | null = null;
+      if (profilePhotoFile) {
+        profileBase64 = await fileToBase64(profilePhotoFile);
+      }
+
+      let logoBase64: string | null = null;
+      if (logoFile) {
+        logoBase64 = await fileToBase64(logoFile);
       }
 
       const payload: any = {
@@ -355,7 +387,7 @@ export default function EmployerPost() {
 
       if (tipoEmpleador === "persona") {
         // 🔹 Mapea EXACTAMENTE al struct de persona
-        payload.foto_perfil = fotoBase64 || "";
+        payload.foto_perfil = profileBase64 || "";
         payload.frase_corta = headline.trim();
         payload.biografia = bio.trim();
         payload.ubicacion = location.trim();
@@ -365,8 +397,11 @@ export default function EmployerPost() {
         payload.facebook_ig = socialProfile.trim();
         payload.otros_links = otherLink.trim();
       } else {
-        // 🔹 Empresa (añadimos razón social, actividad principal, dominio corporativo)
-        payload.foto_perfil = fotoBase64 || "";
+        // 🔹 Empresa (añadimos razón social, actividad principal, dominio corporativo y logo)
+        payload.foto_perfil = profileBase64 || "";
+        if (logoBase64) {
+          payload.logo_empresa = logoBase64;
+        }
         payload.ubicacion = location.trim();
         payload.nombre_empresa = companyName.trim();
         payload.razon_social = razonSocial.trim();
@@ -448,9 +483,9 @@ export default function EmployerPost() {
                 Foto de perfil (opcional)
               </label>
               <div className="flex items-center gap-4">
-                {photoPreview ? (
+                {profilePhotoPreview ? (
                   <img
-                    src={photoPreview}
+                    src={profilePhotoPreview}
                     alt="Preview"
                     className="w-16 h-16 rounded-full object-cover border border-primary/30"
                   />
@@ -465,7 +500,7 @@ export default function EmployerPost() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={handlePhotoChange}
+                    onChange={handleProfilePhotoChange}
                   />
                 </label>
               </div>
@@ -593,17 +628,55 @@ export default function EmployerPost() {
     } else {
       // 🔹 FLUJO EMPRESA
       if (currentStep === 0) {
-        // Datos empresa (incluyendo razón social y actividad principal)
+        // Datos empresa (incluyendo foto de perfil, razón social y actividad principal)
         return (
           <div className="space-y-4">
+            {/* Foto de perfil de la persona que usa la cuenta (OBLIGATORIA) */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Foto de perfil de quien usa la cuenta{" "}
+                <span className="text-red-600">*</span>
+              </label>
+              <div className="flex items-center gap-4">
+                {profilePhotoPreview ? (
+                  <img
+                    src={profilePhotoPreview}
+                    alt="Foto de perfil"
+                    className="w-16 h-16 rounded-full object-cover border border-primary/30"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full border border-dashed border-primary/40 flex items-center justify-center text-xs text-foreground-light/60">
+                    {fullPrivateName
+                      ? fullPrivateName.charAt(0)
+                      : "?"}
+                  </div>
+                )}
+                <label className="text-xs font-medium text-primary cursor-pointer">
+                  <span className="underline">Subir foto de perfil</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleProfilePhotoChange}
+                  />
+                </label>
+              </div>
+              {errors.profilePhoto && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.profilePhoto}
+                </p>
+              )}
+            </div>
+
+            {/* Logo de la empresa (opcional) */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Logo de la empresa (opcional)
               </label>
               <div className="flex items-center gap-4">
-                {photoPreview ? (
+                {logoPreview ? (
                   <img
-                    src={photoPreview}
+                    src={logoPreview}
                     alt="Logo"
                     className="w-16 h-16 rounded-lg object-cover border border-primary/30"
                   />
@@ -618,7 +691,7 @@ export default function EmployerPost() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={handlePhotoChange}
+                    onChange={handleLogoChange}
                   />
                 </label>
               </div>
@@ -729,6 +802,7 @@ export default function EmployerPost() {
     // PASO FINAL: VISTA PREVIA (AMBOS TIPOS)
     // ───────────────────────────────────────
     const isPersona = tipoEmpleador === "persona";
+    const publicImage = isPersona ? profilePhotoPreview : logoPreview;
 
     return (
       <div className="space-y-6 text-sm">
@@ -746,10 +820,10 @@ export default function EmployerPost() {
           {/* PERFIL PÚBLICO */}
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              {photoPreview ? (
+              {publicImage ? (
                 <img
-                  src={photoPreview}
-                  alt="Avatar"
+                  src={publicImage}
+                  alt={isPersona ? "Foto de perfil" : "Logo de la empresa"}
                   className={
                     isPersona
                       ? "w-12 h-12 rounded-full object-cover border border-primary/40"
@@ -815,7 +889,8 @@ export default function EmployerPost() {
               <>
                 {razonSocial && (
                   <p className="text-[11px] text-foreground-light/80">
-                    Razón social: <span className="font-medium">{razonSocial}</span>
+                    Razón social:{" "}
+                    <span className="font-medium">{razonSocial}</span>
                   </p>
                 )}
                 {actividadPrincipal && (
