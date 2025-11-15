@@ -1,4 +1,3 @@
-// src/Register&Login/employer/post/EmployerPost.tsx
 import {
   useEffect,
   useState,
@@ -61,10 +60,29 @@ function SimpleStepper({ steps, currentStep, onStepClick }: SimpleStepperProps) 
   );
 }
 
-const stepsPersona = ["Tu perfil", "Enlaces", "Revisión"];
+// 🔹 Persona: 5 pasos
+const stepsPersona = [
+  "Tu perfil",
+  "Ubicación",
+  "Áreas de interés",
+  "Enlaces",
+  "Revisión",
+];
+
+// 🔹 Empresa: 3 pasos
 const stepsEmpresa = ["Datos empresa", "Sobre la empresa", "Revisión"];
 
-const ONBOARDING_URL = `${API_BASE}/onboarding/employer`; // 🔁 Ajusta si tu back usa otra ruta
+const ONBOARDING_URL = `${API_BASE}/protected/completar-perfil-empleador`; // Ajusta al endpoint real
+
+const AREAS_INTERES = [
+  "Clases y tutorías",
+  "Eventos y logística",
+  "Ventas / encuestas",
+  "Ayuda en casa",
+  "Tecnología / soporte",
+  "Oficina / administración",
+  "Otros",
+];
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -83,28 +101,42 @@ export default function EmployerPost() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  // Campos compartidos / persona
+  // Persona
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
 
-  // Campos empresa
+  // Empresa
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [empresaBio, setEmpresaBio] = useState("");
 
+  // Ubicación (compartida)
+  const [location, setLocation] = useState("");
+
+  // Áreas de interés (persona)
+  const [areasInteres, setAreasInteres] = useState<string[]>([]);
+
   // Enlaces
   const [whatsapp, setWhatsapp] = useState("");
   const [linkedin, setLinkedin] = useState("");
+  const [socialProfile, setSocialProfile] = useState(""); // Facebook o Instagram
   const [otherLink, setOtherLink] = useState("");
 
   // Foto / logo
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
+  // Datos privados del user (para vista privada)
+  const [privateName, setPrivateName] = useState("");
+  const [privateLastName, setPrivateLastName] = useState("");
+  const [privateEmail, setPrivateEmail] = useState("");
+  const [privateCedulaRuc, setPrivateCedulaRuc] = useState("");
+  const [privatePhone, setPrivatePhone] = useState("");
+
   const steps =
     tipoEmpleador === "persona" ? stepsPersona : stepsEmpresa;
 
-  // Detectar tipo de empleador + proteger ruta
+  // Detectar tipo de empleador + proteger ruta + prefill phone/ubicación
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -112,17 +144,17 @@ export default function EmployerPost() {
       return;
     }
 
-    // Si ya completó onboarding, lo mandamos al dashboard
     const storedUserRaw = localStorage.getItem("auth_user");
     if (storedUserRaw) {
       try {
         const u = JSON.parse(storedUserRaw);
+
         if (u.completed_onboarding) {
           navigate("/dashboard");
           return;
         }
 
-        // Intentar leer tipo desde user_data
+        // Tipo de empleador
         const t =
           (u.tipo_empleador as string | undefined) ??
           (u.tipo_identidad as string | undefined);
@@ -134,9 +166,26 @@ export default function EmployerPost() {
           }
         }
 
-        // Prefill WhatsApp si lo tienes guardado
-        if (u.telefono && typeof u.telefono === "string") {
+        // Datos privados
+        if (typeof u.nombre === "string") setPrivateName(u.nombre);
+        if (typeof u.apellido === "string") setPrivateLastName(u.apellido);
+        if (typeof u.email === "string") setPrivateEmail(u.email);
+        if (typeof u.telefono === "string") {
+          setPrivatePhone(u.telefono);
+          // Prefill WhatsApp con el teléfono registrado
           setWhatsapp(u.telefono);
+        }
+        if (typeof u.cedula_ruc === "string") {
+          setPrivateCedulaRuc(u.cedula_ruc);
+        } else if (typeof u.cedula === "string") {
+          setPrivateCedulaRuc(u.cedula);
+        } else if (typeof u.ruc === "string") {
+          setPrivateCedulaRuc(u.ruc);
+        }
+
+        // Prefill ubicación si la tienes
+        if (u.ciudad && typeof u.ciudad === "string") {
+          setLocation(u.ciudad);
         }
       } catch {
         // ignore
@@ -156,6 +205,26 @@ export default function EmployerPost() {
           setTipoEmpleador(normalized as EmployerType);
         }
       }
+
+      if (claims?.nombre && typeof claims.nombre === "string") {
+        setPrivateName(claims.nombre);
+      }
+      if (claims?.apellido && typeof claims.apellido === "string") {
+        setPrivateLastName(claims.apellido);
+      }
+      if (claims?.email && typeof claims.email === "string") {
+        setPrivateEmail(claims.email);
+      }
+      if (claims?.telefono && typeof claims.telefono === "string") {
+        setPrivatePhone(claims.telefono);
+        setWhatsapp(claims.telefono);
+      }
+      if (claims?.cedula_ruc && typeof claims.cedula_ruc === "string") {
+        setPrivateCedulaRuc(claims.cedula_ruc);
+      }
+      if (claims?.ciudad && typeof claims.ciudad === "string") {
+        setLocation(claims.ciudad);
+      }
     }
   }, [navigate]);
 
@@ -166,10 +235,19 @@ export default function EmployerPost() {
     setPhotoPreview(URL.createObjectURL(file));
   };
 
+  const toggleArea = (area: string) => {
+    setAreasInteres((prev) =>
+      prev.includes(area)
+        ? prev.filter((a) => a !== area)
+        : [...prev, area]
+    );
+  };
+
   const validateStep = (step: number): boolean => {
     const err: Record<string, string> = {};
 
     if (tipoEmpleador === "persona") {
+      // 🔹 persona
       if (step === 0) {
         if (!headline.trim()) {
           err.headline = "Escribe una frase corta sobre ti.";
@@ -179,23 +257,39 @@ export default function EmployerPost() {
             "Cuéntanos un poco más (mínimo 40 caracteres).";
         }
       } else if (step === 1) {
+        // Ubicación
+        if (!location.trim()) {
+          err.location = "Ingresa tu ubicación (ciudad/barrio).";
+        }
+      } else if (step === 2) {
+        // Áreas de interés
+        if (!areasInteres.length) {
+          err.areasInteres =
+            "Escoge al menos un área de interés.";
+        }
+      } else if (step === 3) {
+        // Enlaces
         if (
           !whatsapp.trim() &&
           !linkedin.trim() &&
+          !socialProfile.trim() &&
           !otherLink.trim()
         ) {
           err.links =
-            "Agrega al menos un medio de contacto (WhatsApp, LinkedIn u otro).";
+            "Agrega al menos un medio de contacto (WhatsApp, LinkedIn, redes o enlace).";
         }
       }
     } else {
-      // empresa
+      // 🔹 empresa
       if (step === 0) {
         if (!companyName.trim()) {
           err.companyName = "Ingresa el nombre de la empresa.";
         }
         if (!website.trim()) {
           err.website = "Ingresa la página web de la empresa.";
+        }
+        if (!location.trim()) {
+          err.location = "Ingresa la ubicación de la empresa.";
         }
       } else if (step === 1) {
         if (!empresaBio.trim() || empresaBio.trim().length < 40) {
@@ -242,29 +336,39 @@ export default function EmployerPost() {
         fotoBase64 = await fileToBase64(photoFile);
       }
 
-      const payload: any = {
-        tipo_cuenta: "empleador",
-        tipo_empleador: tipoEmpleador,
-        foto_perfil: fotoBase64,
-        completed_onboarding: true,
-      };
+        const payload: any = {
+            // estos campos extra los puede ignorar el backend si solo bindea al struct
+            tipo_cuenta: "empleador",
+            tipo_empleador: tipoEmpleador,
+            completed_onboarding: true,
+        };
 
-      if (tipoEmpleador === "persona") {
-        payload.headline = headline.trim();
-        payload.descripcion = bio.trim();
-        payload.whatsapp = whatsapp.trim() || null;
-        payload.linkedin = linkedin.trim() || null;
-        payload.otro_link = otherLink.trim() || null;
-      } else {
-        payload.nombre_empresa = companyName.trim();
-        payload.website = website.trim();
-        payload.linkedin = linkedin.trim() || null;
-        payload.otro_link = otherLink.trim() || null;
-        payload.descripcion = empresaBio.trim();
-      }
+        if (tipoEmpleador === "persona") {
+            // 🔹 Mapea EXACTAMENTE a EmployerProfileUpdateRequest (persona)
+            payload.foto_perfil = fotoBase64 || ""; // evitar null en string
+            payload.frase_corta = headline.trim();
+            payload.biografia = bio.trim();
+            payload.ubicacion = location.trim();
+            payload.preferencias_categorias = areasInteres;
+            payload.whatsapp = whatsapp.trim();
+            payload.linkedin = linkedin.trim();
+            payload.facebook_ig = socialProfile.trim();
+            payload.otros_links = otherLink.trim();
+        } else {
+            // 🔹 Empresa (cuando tengas el struct específico lo ajustas,
+            // aquí ya evitamos nulls también)
+            payload.foto_perfil = fotoBase64 || "";
+            payload.ubicacion = location.trim();
+            payload.nombre_empresa = companyName.trim();
+            payload.website = website.trim();
+            payload.linkedin = linkedin.trim();
+            payload.facebook_ig = socialProfile.trim();
+            payload.otros_links = otherLink.trim();
+            payload.biografia = empresaBio.trim();
+        }
 
       const res = await fetch(ONBOARDING_URL, {
-        method: "POST",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -304,10 +408,28 @@ export default function EmployerPost() {
     }
   };
 
+  // ─────────────────────────────────────────
+  // DERIVADOS PARA LA VISTA PREVIA
+  // ─────────────────────────────────────────
+  const fullPrivateName = [privateName, privateLastName]
+    .filter(Boolean)
+    .join(" ");
+
+  const publicPersonaName =
+    fullPrivateName ||
+    (privateName ? privateName : "Tu nombre");
+
+  const publicPersonaNameShort = `${publicPersonaName} ${
+    privateLastName ? `${privateLastName.charAt(0).toUpperCase()}.` : ""
+  }`.trim();
+
+  const empresaPublicName = companyName || "Nombre de la empresa";
+
   const renderStepContent = () => {
     if (tipoEmpleador === "persona") {
       // 🔹 FLUJO PERSONA
       if (currentStep === 0) {
+        // Tu perfil
         return (
           <div className="space-y-4">
             <div>
@@ -323,7 +445,7 @@ export default function EmployerPost() {
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-full border border-dashed border-primary/40 flex items-center justify-center text-xs text-foreground-light/60">
-                    Sin foto
+                    {publicPersonaNameShort.charAt(0) || "?"}
                   </div>
                 )}
                 <label className="text-xs font-medium text-primary cursor-pointer">
@@ -364,10 +486,66 @@ export default function EmployerPost() {
       }
 
       if (currentStep === 1) {
+        // Ubicación
         return (
           <div className="space-y-4">
             <Input
-              label="WhatsApp (recomendado)"
+              label="Ubicación"
+              placeholder="Ej: Guayaquil, sector Urdesa"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              error={errors.location}
+              required
+            />
+            <p className="text-xs text-foreground-light/70">
+              Esta ubicación ayuda a que los estudiantes sepan en qué zona se realizarían
+              los trabajos presenciales.
+            </p>
+          </div>
+        );
+      }
+
+      if (currentStep === 2) {
+        // Áreas de interés
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-foreground-light/80">
+              Escoge las áreas de trabajo principales para las que sueles buscar estudiantes.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {AREAS_INTERES.map((area) => {
+                const active = areasInteres.includes(area);
+                return (
+                  <button
+                    key={area}
+                    type="button"
+                    onClick={() => toggleArea(area)}
+                    className={`px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-white border-primary"
+                        : "border-primary/30 text-foreground-light/80 hover:border-primary/60"
+                    }`}
+                  >
+                    {area}
+                  </button>
+                );
+              })}
+            </div>
+            {errors.areasInteres && (
+              <p className="text-xs text-red-600">
+                {errors.areasInteres}
+              </p>
+            )}
+          </div>
+        );
+      }
+
+      if (currentStep === 3) {
+        // Enlaces
+        return (
+          <div className="space-y-4">
+            <Input
+              label="WhatsApp (usaremos tu número registrado, puedes ajustarlo si quieres)"
               placeholder="+593 99 123 4567"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
@@ -381,8 +559,15 @@ export default function EmployerPost() {
             />
 
             <Input
+              label="Facebook o Instagram (opcional)"
+              placeholder="https://www.instagram.com/usuario"
+              value={socialProfile}
+              onChange={(e) => setSocialProfile(e.target.value)}
+            />
+
+            <Input
               label="Otro enlace (opcional)"
-              placeholder="Ej: enlace a red social o formulario"
+              placeholder="Ej: enlace a otra red, formulario, etc."
               value={otherLink}
               onChange={(e) => setOtherLink(e.target.value)}
             />
@@ -396,6 +581,7 @@ export default function EmployerPost() {
     } else {
       // 🔹 FLUJO EMPRESA
       if (currentStep === 0) {
+        // Datos empresa
         return (
           <div className="space-y-4">
             <div>
@@ -411,7 +597,7 @@ export default function EmployerPost() {
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-lg border border-dashed border-primary/40 flex items-center justify-center text-xs text-foreground-light/60">
-                    Sin logo
+                    {empresaPublicName.charAt(0) || "?"}
                   </div>
                 )}
                 <label className="text-xs font-medium text-primary cursor-pointer">
@@ -445,16 +631,19 @@ export default function EmployerPost() {
             />
 
             <Input
-              label="LinkedIn de la empresa (opcional)"
-              placeholder="https://www.linkedin.com/company/tu-empresa"
-              value={linkedin}
-              onChange={(e) => setLinkedin(e.target.value)}
+              label="Ubicación"
+              placeholder="Ej: Guayaquil, sector Urdesa"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              error={errors.location}
+              required
             />
           </div>
         );
       }
 
       if (currentStep === 1) {
+        // Sobre la empresa + enlaces
         return (
           <div className="space-y-4">
             <div className="flex flex-col gap-1 text-sm">
@@ -475,8 +664,22 @@ export default function EmployerPost() {
             </div>
 
             <Input
+              label="LinkedIn de la empresa (opcional)"
+              placeholder="https://www.linkedin.com/company/tu-empresa"
+              value={linkedin}
+              onChange={(e) => setLinkedin(e.target.value)}
+            />
+
+            <Input
+              label="Facebook o Instagram (opcional)"
+              placeholder="https://www.instagram.com/tuempresa"
+              value={socialProfile}
+              onChange={(e) => setSocialProfile(e.target.value)}
+            />
+
+            <Input
               label="Otro enlace (opcional)"
-              placeholder="Ej: Instagram, formulario, etc."
+              placeholder="Ej: Instagram alterno, formulario, etc."
               value={otherLink}
               onChange={(e) => setOtherLink(e.target.value)}
             />
@@ -485,85 +688,179 @@ export default function EmployerPost() {
       }
     }
 
-    // 🔹 Paso de revisión (común)
-    return (
-      <div className="space-y-4 text-sm">
-        <p className="text-foreground-light/80">
-          Revisa que la información esté correcta antes de guardar tu
-          perfil.
-        </p>
+    // ───────────────────────────────────────
+    // PASO FINAL: VISTA PREVIA (AMBOS TIPOS)
+    // ───────────────────────────────────────
+    const isPersona = tipoEmpleador === "persona";
 
-        <div className="rounded-xl border border-primary/20 p-4 space-y-3 text-xs md:text-sm">
-          <div>
-            <h3 className="font-semibold mb-1">
-              Tipo de empleador
-            </h3>
-            <p className="text-foreground-light/80 capitalize">
-              {tipoEmpleador}
+    return (
+      <div className="space-y-6 text-sm">
+        <div>
+          <h2 className="text-base font-semibold mb-1">
+            Vista previa de tu perfil
+          </h2>
+          <p className="text-xs text-foreground-light/70">
+            Esto es un aproximado de cómo se verá tu perfil público para los estudiantes
+            y cómo verás tú tus datos internos no públicos.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* PERFIL PÚBLICO */}
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              {photoPreview ? (
+                <img
+                  src={photoPreview}
+                  alt="Avatar"
+                  className={isPersona
+                    ? "w-12 h-12 rounded-full object-cover border border-primary/40"
+                    : "w-12 h-12 rounded-lg object-cover border border-primary/40"}
+                />
+              ) : (
+                <div
+                  className={
+                    isPersona
+                      ? "w-12 h-12 rounded-full border border-primary/30 flex items-center justify-center text-sm font-semibold"
+                      : "w-12 h-12 rounded-lg border border-primary/30 flex items-center justify-center text-sm font-semibold"
+                  }
+                >
+                  {isPersona
+                    ? publicPersonaNameShort.charAt(0) || "?"
+                    : empresaPublicName.charAt(0) || "?"}
+                </div>
+              )}
+
+              <div>
+                <p className="font-semibold text-sm">
+                  {isPersona ? publicPersonaNameShort : empresaPublicName}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px]">
+                  <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">
+                    {isPersona ? "Persona" : "Empresa"}
+                  </span>
+                  {location && (
+                    <span className="inline-flex items-center gap-1 text-foreground-light/70">
+                      <span>📍</span>
+                      <span>{location}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {isPersona ? (
+              <>
+                {headline && (
+                  <p className="text-sm font-medium">{headline}</p>
+                )}
+                {bio && (
+                  <p className="text-xs text-foreground-light/80 line-clamp-4">
+                    {bio}
+                  </p>
+                )}
+                {areasInteres.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {areasInteres.map((area) => (
+                      <span
+                        key={area}
+                        className="px-2 py-0.5 rounded-full bg-primary/10 text-[11px] text-primary"
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {empresaBio && (
+                  <p className="text-xs text-foreground-light/80 line-clamp-4">
+                    {empresaBio}
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Contacto visible */}
+            <div className="mt-1 border-t border-primary/10 pt-2">
+            <p className="text-xs font-semibold mb-1">
+                Los medios de contacto y verificación pública que posees.
+            </p>
+
+            {whatsapp || linkedin || socialProfile || otherLink ? (
+                <ul className="space-y-1 text-[11px] text-foreground-light/80">
+                {whatsapp && <li>• WhatsApp conectado</li>}
+                {linkedin && <li>• LinkedIn añadido</li>}
+                {socialProfile && <li>• Facebook / Instagram añadido</li>}
+                {otherLink && <li>• Otro enlace añadido</li>}
+                </ul>
+            ) : (
+                <ul className="space-y-1 text-[11px] text-foreground-light/80">
+                <li>• Aún no has añadido enlaces visibles.</li>
+                </ul>
+            )}
+            </div>
+
+            <p className="mt-1 text-[10px] text-foreground-light/60">
+              Esta tarjeta representa lo que verán los estudiantes al entrar a tu
+              perfil (sin mostrar datos sensibles como cédula, correo o dirección
+              exacta).
             </p>
           </div>
 
-          {tipoEmpleador === "persona" ? (
-            <>
+          {/* PERFIL PRIVADO */}
+          <div className="rounded-2xl border border-dashed border-primary/30 p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🔒</span>
               <div>
-                <h3 className="font-semibold mb-1">Frase corta</h3>
-                <p className="text-foreground-light/80">
-                  {headline || "—"}
+                <p className="text-sm font-semibold">Datos internos</p>
+                <p className="text-[11px] text-foreground-light/70">
+                  Solo tú ves esta información dentro de tu cuenta.
                 </p>
               </div>
+            </div>
+
+            <div className="space-y-1 text-xs text-foreground-light/85">
               <div>
-                <h3 className="font-semibold mb-1">Descripción</h3>
-                <p className="text-foreground-light/80 whitespace-pre-line">
-                  {bio || "—"}
+                <p className="font-semibold">
+                  {isPersona ? "Nombre completo" : "Persona de contacto"}
                 </p>
+                <p>{fullPrivateName || "—"}</p>
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Enlaces</h3>
-                <ul className="list-disc ml-4 text-foreground-light/80">
-                  <li>WhatsApp: {whatsapp || "—"}</li>
-                  <li>LinkedIn: {linkedin || "—"}</li>
-                  <li>Otro: {otherLink || "—"}</li>
-                </ul>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <h3 className="font-semibold mb-1">
-                  Nombre de la empresa
-                </h3>
-                <p className="text-foreground-light/80">
-                  {companyName || "—"}
+                <p className="font-semibold">
+                  Correo con el que inicias sesión
                 </p>
+                <p>{privateEmail || "—"}</p>
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Página web</h3>
-                <p className="text-foreground-light/80">
-                  {website || "—"}
-                </p>
+                <p className="font-semibold">Teléfono principal</p>
+                <p>{privatePhone || "—"}</p>
               </div>
               <div>
-                <h3 className="font-semibold mb-1">LinkedIn</h3>
-                <p className="text-foreground-light/80">
-                  {linkedin || "—"}
-                </p>
+                <p className="font-semibold">Cédula / RUC</p>
+                <p>{privateCedulaRuc || "—"}</p>
               </div>
               <div>
-                <h3 className="font-semibold mb-1">
-                  Descripción de la empresa
-                </h3>
-                <p className="text-foreground-light/80 whitespace-pre-line">
-                  {empresaBio || "—"}
-                </p>
+                <p className="font-semibold">Ubicación guardada</p>
+                <p>{location || "—"}</p>
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Otro enlace</h3>
-                <p className="text-foreground-light/80">
-                  {otherLink || "—"}
+                <p className="font-semibold">
+                  WhatsApp configurado como contacto
                 </p>
+                <p>{whatsapp || privatePhone || "—"}</p>
               </div>
-            </>
-          )}
+            </div>
+
+            <p className="mt-2 text-[10px] text-foreground-light/60">
+              Estos datos se usan para verificar tu identidad y ayudarte a gestionar
+              tus publicaciones, pero no se exponen en el perfil público tal cual.
+              CameYa puede usar parte de esta información para mantener segura la
+              comunidad (por ejemplo, verificaciones internas o soporte).
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -585,7 +882,7 @@ export default function EmployerPost() {
             </p>
           </div>
 
-          {/* Tipo de empleador (solo display, no editable aquí) */}
+          {/* Tipo de empleador (solo display) */}
           <div className="mb-4 text-xs rounded-full bg-primary/5 inline-flex px-3 py-1 items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-primary" />
             <span className="capitalize">
