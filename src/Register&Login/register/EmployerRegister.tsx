@@ -148,18 +148,7 @@ export default function EmployerRegister() {
     const telefonoNormalizado = normalizeGeneric(phone);
     const cedulaRucNormalizada = normalizeGeneric(cedulaRuc);
 
-    // Codificar la foto de perfil a Base64
-    let fotoPerfilBase64 = "";
-    // Si en el futuro se decide manejar la foto de perfil, descomentar y ajustar lógica aquí
-    /* if (fotoPerfil) {
-      try {
-        fotoPerfilBase64 = await fileToBase64(fotoPerfil);
-      } catch {
-        setErrors({ fotoPerfil: "No se pudo procesar la foto de perfil" });
-        return;
-      }
-    } */
-
+  
     const data = {
       nombre: nombreNormalizado || "",
       apellido: apellidoNormalizado || "",
@@ -205,14 +194,7 @@ export default function EmployerRegister() {
     }
   };
 
-  // Función para convertir la foto a Base64
-  const fileToBase64 = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+
 
   return (
     <section className="min-h-[80vh] flex items-center justify-center py-16">

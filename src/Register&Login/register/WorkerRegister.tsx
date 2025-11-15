@@ -9,7 +9,6 @@ const UNIVERSITY = "ESPOL";
 
 export default function WorkerRegister() {
   const navigate = useNavigate();
-  const kurac = 6
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [cedula, setCedula] = useState("");
