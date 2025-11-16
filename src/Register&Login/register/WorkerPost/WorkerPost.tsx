@@ -35,8 +35,27 @@ function getUserIdFromLocalStorage(): string | undefined {
     const raw = localStorage.getItem("auth_user");
     if (!raw) return undefined;
     const parsed = JSON.parse(raw);
-    const id = parsed?.user_data?.user_id ?? parsed?.user_id ?? parsed?.id ?? parsed?.uid;
+    const id =
+      parsed?.user_data?.user_id ?? parsed?.user_id ?? parsed?.id ?? parsed?.uid;
     return id != null ? String(id) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Lee tipo de cuenta / rol de localStorage.auth_user
+function getUserRoleFromLocalStorage(): string | undefined {
+  try {
+    const raw = localStorage.getItem("auth_user");
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    // típicamente "estudiante" o "empleador"
+    return (
+      parsed?.user_data?.tipo_cuenta ??
+      parsed?.tipo_cuenta ??
+      parsed?.role ??
+      parsed?.rol
+    );
   } catch {
     return undefined;
   }
@@ -66,32 +85,50 @@ export default function WorkerPost({
   onFinish?: () => void;
 }) {
   const nav = useNavigate();
-  const { state, errors, setFotoPerfil, setState, setLink, validate } = useOnboarding();
+  const { state, errors, setFotoPerfil, setState, setLink, validate } =
+    useOnboarding();
   const [step, setStep] = useState(1);
   const total = 4;
 
   // 🔹 Estado local para habilidades & disponibilidad
   const [skillsInput, setSkillsInput] = useState("");
-  const [skillsTags, setSkillsTags] = useState<string[]>(() => state?.habilidades ?? []);
+  const [skillsTags, setSkillsTags] = useState<string[]>(
+    () => state?.habilidades ?? []
+  );
   const [availability, setAvailability] = useState<AvailabilityKey | "">(
     state?.disponibilidad ?? ""
   );
 
-  const [localErr, setLocalErr] = useState<{ habilidades?: string; disponibilidad?: string }>({});
+  const [localErr, setLocalErr] = useState<{
+    habilidades?: string;
+    disponibilidad?: string;
+  }>({});
 
-  // Token + userId
+  // Token + userId + rol
   const token = typeof window !== "undefined" ? getAuthToken() : "";
   const claims = decodeJWT(token);
-  const userIdLS = typeof window !== "undefined" ? getUserIdFromLocalStorage() : undefined;
+  const userIdLS =
+    typeof window !== "undefined" ? getUserIdFromLocalStorage() : undefined;
+  const roleLS =
+    typeof window !== "undefined" ? getUserRoleFromLocalStorage() : undefined;
   const idClaim = claims?.user_id ?? claims?.sub ?? claims?.uid ?? claims?.id;
-  const userId = userIdProp ?? userIdLS ?? (idClaim != null ? String(idClaim) : undefined);
+  const roleClaim = claims?.role ?? claims?.tipo_cuenta ?? claims?.account_type;
+  const userId =
+    userIdProp ?? userIdLS ?? (idClaim != null ? String(idClaim) : undefined);
+  const userRole = roleLS ?? roleClaim;
 
-  // Si no hay token o no hay userId, manda a login
+  // Si no hay token o no hay userId → login
+  // Si el rol no es "estudiante" → lo sacamos de este flujo
   useEffect(() => {
     if (!token || !userId) {
       nav("/login");
+      return;
     }
-  }, [token, userId, nav]);
+    if (userRole && userRole !== "estudiante") {
+      // Este onboarding es exclusivo para estudiantes
+      nav("/");
+    }
+  }, [token, userId, userRole, nav]);
 
   const fotoPreview = useMemo(
     () => (state.foto_perfil ? URL.createObjectURL(state.foto_perfil) : null),
@@ -167,7 +204,11 @@ export default function WorkerPost({
       setLocalErr(nextLocalErr);
       if (nextLocalErr.habilidades || nextLocalErr.disponibilidad) return;
 
-      setState((s) => ({ ...s, habilidades: skillsTags, disponibilidad: availability }));
+      setState((s) => ({
+        ...s,
+        habilidades: skillsTags,
+        disponibilidad: availability,
+      }));
     }
 
     if (current === 3 && (err.biografia || err.links)) return;
@@ -181,7 +222,7 @@ export default function WorkerPost({
    * 1) Convertir foto a base64 (dataURL) si existe
    * 2) Construir payload JSON con TODOS los campos y la foto base64
    * 3) PATCH a /protected/completar-perfil
-   * 4) (opcional) Finalizar onboarding
+   * 4) Redirigir al dashboard de estudiante
    */
   async function submitAll() {
     if (!userId) return;
@@ -189,7 +230,8 @@ export default function WorkerPost({
     // Validación global antes de enviar
     const err = validate(true);
     const blockBecauseLocal =
-      (skillsTags.length === 0 ? "habilidades" : "") || (!availability ? "disponibilidad" : "");
+      (skillsTags.length === 0 ? "habilidades" : "") ||
+      (!availability ? "disponibilidad" : "");
 
     if (
       err.foto_perfil ||
@@ -200,12 +242,16 @@ export default function WorkerPost({
       blockBecauseLocal
     ) {
       if (err.foto_perfil) setStep(1);
-      else if (err.sector_preferencias || err.titulo_perfil || blockBecauseLocal) setStep(2);
+      else if (err.sector_preferencias || err.titulo_perfil || blockBecauseLocal)
+        setStep(2);
       else if (err.biografia || err.links) setStep(3);
 
       setLocalErr({
-        habilidades: skillsTags.length === 0 ? "Añade al menos una habilidad" : undefined,
-        disponibilidad: !availability ? "Selecciona tu disponibilidad" : undefined,
+        habilidades:
+          skillsTags.length === 0 ? "Añade al menos una habilidad" : undefined,
+        disponibilidad: !availability
+          ? "Selecciona tu disponibilidad"
+          : undefined,
       });
       return;
     }
@@ -246,10 +292,9 @@ export default function WorkerPost({
           linksArray.length > 0,
 
         // 📸 Extras para la foto (el back los puede leer opcionalmente)
-        // Si el back aún no soporta estos campos, los ignorará sin romper el bind.
         foto_perfil_base64: foto_base64, // solo la parte base64 (sin el prefijo data:)
-        foto_perfil_mime: foto_mime,     // ej. "image/png"
-        foto_perfil_data_url: foto_data_url, // opcional: dataURL completa por si la quieres usar
+        foto_perfil_mime: foto_mime, // ej. "image/png"
+        foto_perfil_data_url: foto_data_url, // opcional: dataURL completa
       };
 
       await fetch(`${API_BASE}/protected/completar-perfil`, {
@@ -261,10 +306,9 @@ export default function WorkerPost({
         body: JSON.stringify(payload),
       }).then(handleJson);
 
-      // 3) Finalizar onboarding (si tu back lo requiere)
-      
+      // 3) Finalizar onboarding → dashboard de estudiante
       if (onFinish) onFinish();
-      else nav("/dashboard");
+      else nav("/dashboard/student");
     } catch (e) {
       console.error(e);
       // El alert ya se muestra en handleJson cuando hay status no-OK
@@ -276,7 +320,7 @@ export default function WorkerPost({
       <section className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center px-6">
           <h2 className="text-xl font-semibold">Sesión requerida</h2>
-        <p className="mt-2 text-sm text-foreground-light/70">
+          <p className="mt-2 text-sm text-foreground-light/70">
             Inicia sesión para configurar tu perfil.
           </p>
           <button
@@ -330,12 +374,17 @@ export default function WorkerPost({
             <div className="space-y-6">
               {/* Sectores */}
               <div className="space-y-2">
-                <span className="block text-sm font-semibold">Sectores de preferencia</span>
+                <span className="block text-sm font-semibold">
+                  Sectores de preferencia
+                </span>
                 <MultiSelectChips
                   options={SECTORES}
                   value={state.sector_preferencias}
                   onChange={(next) =>
-                    setState((s) => ({ ...s, sector_preferencias: next as any }))
+                    setState((s) => ({
+                      ...s,
+                      sector_preferencias: next as any,
+                    }))
                   }
                   error={errors.sector_preferencias}
                 />
@@ -343,21 +392,29 @@ export default function WorkerPost({
 
               {/* Título */}
               <label className="block w-full">
-                <span className="block mb-1 text-sm font-semibold">Título de perfil</span>
+                <span className="block mb-1 text-sm font-semibold">
+                  Título de perfil
+                </span>
                 <input
                   className="block w-full rounded-lg border border-primary/20 bg-background-light dark:bg-background-dark px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
                   placeholder="Ej.: Estudiante de Sistemas | Frontend Jr."
                   value={state.titulo_perfil}
-                  onChange={(e) => setState((s) => ({ ...s, titulo_perfil: e.target.value }))}
+                  onChange={(e) =>
+                    setState((s) => ({ ...s, titulo_perfil: e.target.value }))
+                  }
                 />
                 {errors.titulo_perfil && (
-                  <p className="text-xs text-red-600 mt-1">{errors.titulo_perfil}</p>
+                  <p className="text-xs text-red-600 mt-1">
+                    {errors.titulo_perfil}
+                  </p>
                 )}
               </label>
 
               {/* Habilidades */}
               <div className="w-full">
-                <label className="block mb-1 text-sm font-semibold">Habilidades (tags)</label>
+                <label className="block mb-1 text-sm font-semibold">
+                  Habilidades (tags)
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     className="flex-1 rounded-lg border border-primary/20 bg-background-light dark:bg-background-dark px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
@@ -375,7 +432,9 @@ export default function WorkerPost({
                   </button>
                 </div>
                 {localErr.habilidades && (
-                  <p className="text-xs text-red-600 mt-1">{localErr.habilidades}</p>
+                  <p className="text-xs text-red-600 mt-1">
+                    {localErr.habilidades}
+                  </p>
                 )}
                 {skillsTags.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -404,7 +463,9 @@ export default function WorkerPost({
 
               {/* Disponibilidad */}
               <label className="block text-left w-full">
-                <span className="block mb-1 text-sm font-semibold">Disponibilidad</span>
+                <span className="block mb-1 text-sm font-semibold">
+                  Disponibilidad
+                </span>
                 <select
                   className="block w-full rounded-lg border border-primary/20 bg-background-light dark:bg-background-dark px-3 py-2 outline-none focus:ring-2 focus:ring-primary/40"
                   value={availability}
@@ -421,7 +482,9 @@ export default function WorkerPost({
                   ))}
                 </select>
                 {localErr.disponibilidad && (
-                  <p className="text-xs text-red-600 mt-1">{localErr.disponibilidad}</p>
+                  <p className="text-xs text-red-600 mt-1">
+                    {localErr.disponibilidad}
+                  </p>
                 )}
               </label>
             </div>
@@ -439,14 +502,18 @@ export default function WorkerPost({
               <TextArea
                 label="Biografía"
                 value={state.biografia}
-                onChange={(v: string) => setState((s) => ({ ...s, biografia: v }))}
+                onChange={(v: string) =>
+                  setState((s) => ({ ...s, biografia: v }))
+                }
                 maxLength={500}
                 rows={5}
                 placeholder="Ej.: Soy estudiante de 6to semestre en ESPOL, con experiencia en Excel avanzado…"
                 error={errors.biografia}
               />
               <LinkFields values={state.links} setValue={setLink} />
-              {errors.links && <p className="text-xs text-red-600">{errors.links}</p>}
+              {errors.links && (
+                <p className="text-xs text-red-600">{errors.links}</p>
+              )}
             </div>
           </StepShell>
         )}
@@ -460,7 +527,11 @@ export default function WorkerPost({
             nextLabel="Finalizar"
           >
             <ReviewSubmit
-              data={{ ...state, habilidades: skillsTags, disponibilidad: availability }}
+              data={{
+                ...state,
+                habilidades: skillsTags,
+                disponibilidad: availability,
+              }}
             />
           </StepShell>
         )}

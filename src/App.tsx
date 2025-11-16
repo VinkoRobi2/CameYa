@@ -14,6 +14,9 @@ import EmployerPost from "./Register&Login/register/EmployerPost/EmployerPost";
 // Exportas WorkerPost como named export desde index.ts de su carpeta
 import { WorkerPost } from "./Register&Login/register/WorkerPost";
 
+// Dashboard de estudiantes
+import StudentDashboard from "./dashboards/students";
+
 // Tu landing real dentro de /landingPage
 import LandingPage from "./landingPage/LandingPage";
 
@@ -49,7 +52,7 @@ export default function App() {
         }
       />
 
-      {/* Alias usado tras el login: /register/worker/post */}
+      {/* Alias usado tras el registro/login: /register/worker/post */}
       <Route
         path="/register/worker/post"
         element={
@@ -61,8 +64,7 @@ export default function App() {
         }
       />
 
-
-      {/* Alias usado tras el login: /register/employer/post */}
+      {/* Alias usado tras el registro/login: /register/employer/post */}
       <Route
         path="/register/employer/post"
         element={
@@ -74,9 +76,25 @@ export default function App() {
         }
       />
 
+      {/* Dashboard estudiante (ruta principal) */}
+      <Route
+        path="/dashboard"
+        element={
+          <Protected>
+            <StudentDashboard />
+          </Protected>
+        }
+      />
 
-      {/* Dashboard */}
-      <Route path="/dashboard" element={<div className="p-6">Dashboard</div>} />
+      {/* Alias explícito por si en algún momento quieres /dashboard/student */}
+      <Route
+        path="/dashboard/student"
+        element={
+          <Protected>
+            <StudentDashboard />
+          </Protected>
+        }
+      />
 
       {/* Legales / contacto */}
       <Route path="/terms" element={<TermsAndPriv />} />
