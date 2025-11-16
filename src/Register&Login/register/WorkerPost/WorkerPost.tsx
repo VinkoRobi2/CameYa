@@ -262,15 +262,7 @@ export default function WorkerPost({
       }).then(handleJson);
 
       // 3) Finalizar onboarding (si tu back lo requiere)
-      await fetch(`${API_BASE}/api/users/${userId}/profile-finalize`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ completed_onboarding: true }),
-      }).then(handleJson);
-
+      
       if (onFinish) onFinish();
       else nav("/dashboard");
     } catch (e) {
