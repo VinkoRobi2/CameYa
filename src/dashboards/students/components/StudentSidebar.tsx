@@ -1,70 +1,96 @@
 // src/dashboards/students/components/StudentSidebar.tsx
-import type { StudentTab } from "../index";
+import {
+  Home,
+  ListChecks,
+  CheckCircle2,
+  User,
+} from "lucide-react";
 
-interface StudentSidebarProps {
+export type StudentTab = "explorar" | "postulaciones" | "completados" | "perfil";
+
+type Props = {
   activeTab: StudentTab;
   onTabChange: (tab: StudentTab) => void;
-}
+};
 
-const navItems: { id: StudentTab; label: string; description: string }[] = [
-  {
-    id: "home",
-    label: "Inicio",
-    description: "Explorar trabajos",
-  },
-  {
-    id: "applications",
-    label: "Postulaciones",
-    description: "Estados y contacto",
-  },
-  {
-    id: "completed",
-    label: "Completados",
-    description: "Historial e ingresos",
-  },
-  {
-    id: "profile",
-    label: "Mi perfil",
-    description: "Lo que ven los empleadores",
-  },
+const TABS: { id: StudentTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "explorar", label: "Explorar trabajos", icon: Home },
+  { id: "postulaciones", label: "Mis postulaciones", icon: ListChecks },
+  { id: "completados", label: "Trabajos completados", icon: CheckCircle2 },
+  { id: "perfil", label: "Mi perfil", icon: User },
 ];
 
-export const StudentSidebar = ({
-  activeTab,
-  onTabChange,
-}: StudentSidebarProps) => {
+export function StudentSidebar({ activeTab, onTabChange }: Props) {
   return (
-    <nav className="flex flex-col w-full h-full px-3 py-4 gap-4">
-      <div className="px-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          CameYa · Estudiante
-        </p>
-      </div>
+    <>
+      {/* Desktop: sidebar vertical */}
+      <nav className="hidden md:flex h-full flex-col justify-between p-4">
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-foreground-light/60 dark:text-foreground-dark/60">
+              Navegación
+            </p>
+          </div>
 
-      <div className="flex-1 flex flex-col gap-1">
-        {navItems.map((item) => {
-          const isActive = item.id === activeTab;
+          <ul className="space-y-2">
+            {TABS.map(({ id, label, icon: Icon }) => {
+              const isActive = activeTab === id;
+              return (
+                <li key={id}>
+                  <button
+                    type="button"
+                    onClick={() => onTabChange(id)}
+                    className={[
+                      "flex w-full items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
+                      isActive
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-transparent text-foreground-light/80 dark:text-foreground-dark/80 border-border hover:bg-primary/5",
+                    ].join(" ")}
+                  >
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background-light/80 dark:bg-background-dark/80">
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-left">{label}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="mt-4 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
+          <p>CameYa · el trabajo que llega ya.</p>
+        </div>
+      </nav>
+
+      {/* Mobile: barra inferior */}
+      <nav className="flex md:hidden items-center justify-around px-2 py-2">
+        {TABS.map(({ id, label, icon: Icon }) => {
+          const isActive = activeTab === id;
           return (
             <button
-              key={item.id}
+              key={id}
               type="button"
-              onClick={() => onTabChange(item.id)}
-              className={`w-full text-left rounded-xl px-3 py-2.5 transition border text-sm ${
-                isActive
-                  ? "bg-sky-500/20 border-sky-500/70 text-sky-50"
-                  : "bg-transparent border-transparent text-slate-300 hover:bg-slate-900/60 hover:border-slate-700"
-              }`}
+              onClick={() => onTabChange(id)}
+              className="flex flex-col items-center gap-1 px-2 py-1"
             >
-              <div className="font-medium">{item.label}</div>
-              <div className="text-xs text-slate-400">{item.description}</div>
+              <span
+                className={[
+                  "inline-flex h-8 w-8 items-center justify-center rounded-full border text-xs transition",
+                  isActive
+                    ? "bg-primary text-white border-primary shadow-sm"
+                    : "bg-background-light dark:bg-background-dark border-border text-foreground-light/70 dark:text-foreground-dark/70",
+                ].join(" ")}
+              >
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="text-[10px] leading-tight text-foreground-light/70 dark:text-foreground-dark/70">
+                {label}
+              </span>
             </button>
           );
         })}
-      </div>
-
-      <div className="px-2 pb-2 text-[11px] text-slate-500">
-        <p>CameYa: el trabajo que llega ya.</p>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
-};
+}

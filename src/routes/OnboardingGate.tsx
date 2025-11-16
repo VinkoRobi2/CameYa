@@ -1,26 +1,71 @@
-import { Navigate } from "react-router-dom";
+// src/routes/OnboardingGate.tsx
 import { useEffect, useState, type ReactNode } from "react";
-import { ME_URL } from "../global_helpers/api";
+import { Navigate } from "react-router-dom";
 
 type Props = { children: ReactNode };
+type GateState = "loading" | "login" | "onboarding" | "ok";
 
 export default function OnboardingGate({ children }: Props) {
-  const [dest, setDest] = useState<"loading" | "onboarding" | "dashboard">("loading");
+  const [state, setState] = useState<GateState>("loading");
 
   useEffect(() => {
-    async function go() {
+    try {
       const token = localStorage.getItem("auth_token");
-      if (!token) { setDest("onboarding"); return; }
-      const res = await fetch(ME_URL, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) { setDest("onboarding"); return; }
-      const me = await res.json();
-      setDest(me.completed_onboarding ? "dashboard" : "onboarding");
+      if (!token) {
+        setState("login");
+        return;
+      }
+
+      const rawUser = localStorage.getItem("auth_user");
+      if (!rawUser) {
+        // si no hay user_data, tratamos como perfil incompleto
+        setState("onboarding");
+        return;
+      }
+
+      const data = JSON.parse(rawUser);
+
+      const tipoCuenta =
+        data?.tipo_cuenta ??
+        data?.role ??
+        data?.user_data?.tipo_cuenta ??
+        data?.user_data?.role ??
+        "";
+
+      const perfilCompleto = Boolean(
+        data?.perfil_completo ??
+          data?.completed_onboarding ??
+          data?.user_data?.perfil_completo ??
+          data?.user_data?.completed_onboarding ??
+          false
+      );
+
+      if (tipoCuenta === "estudiante") {
+        if (perfilCompleto) {
+          setState("ok");
+        } else {
+          setState("onboarding");
+        }
+      } else {
+        // otros roles: de momento los dejamos pasar
+        setState("ok");
+      }
+    } catch (e) {
+      console.error(e);
+      setState("login");
     }
-    go();
   }, []);
 
-  if (dest === "loading") return <div className="p-6 text-sm">Cargando…</div>;
-  if (dest === "dashboard") return <Navigate to="/dashboard" replace />;
+  if (state === "loading") return null;
 
+  if (state === "login") {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (state === "onboarding") {
+    return <Navigate to="/register/worker/post" replace />;
+  }
+
+  // state === "ok"
   return <>{children}</>;
 }

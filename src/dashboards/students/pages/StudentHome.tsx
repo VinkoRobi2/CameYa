@@ -4,40 +4,42 @@ import type { Job } from "../../common/types";
 import { FiltersBar } from "../components/FiltersBar";
 import { JobSwipeDeck } from "../components/JobSwipeDeck";
 
-const mockJobs: Job[] = [
+const MOCK_JOBS: Job[] = [
   {
     id: "1",
-    title: "Ayudante en evento universitario",
-    employerName: "Club de Emprendimiento ESPOL",
+    title: "Staff para evento en ESPOL",
+    employerName: "Eventos U",
+    employerAvatarUrl: "",
     paymentLabel: "$25 · por día",
     dateLabel: "Sábado · 09:00–15:00",
-    locationLabel: "ESPOL, Guayaquil",
-    tags: ["Fin de semana", "Principiante OK", "Presencial"],
+    locationLabel: "Campus Prosperina, ESPOL",
+    tags: ["Hoy", "Eventos", "Principiante OK"],
     mode: "PRESENCIAL",
   },
   {
     id: "2",
     title: "Tutor de Matemáticas Básicas",
     employerName: "Familia Ramírez",
+    employerAvatarUrl: "",
     paymentLabel: "$8 · por hora",
-    dateLabel: "Viernes tarde",
+    dateLabel: "Viernes por la tarde",
     locationLabel: "Remoto",
     tags: ["Tutorías", "Remoto"],
     mode: "REMOTO",
   },
 ];
 
-export const StudentHome = () => {
+export default function StudentHome() {
   const [dateFilter, setDateFilter] = useState<string>("Todos");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [modeFilter, setModeFilter] = useState<string | null>(null);
 
-  // Por ahora estos filtros no cambian la data mock;
-  // cuando conectes API aplica los filtros sobre el array de trabajos.
-  const filteredJobs = mockJobs;
+  // Por ahora, no filtramos realmente MOCK_JOBS.
+  // Cuando conectes al backend, aplicas filtros aquí.
+  const filteredJobs = MOCK_JOBS;
 
   const handleApply = (job: Job) => {
-    // Aquí luego llamarás a tu endpoint de crear postulación
+    // Aquí luego llamarás al endpoint de crear postulación
     console.log("Postular a:", job.id);
   };
 
@@ -51,29 +53,69 @@ export const StudentHome = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <p className="mb-4 text-sm text-slate-300">
-        Encuentra trabajos cortos, bien explicados y pensados para estudiantes.
-        Postula solo a los que realmente puedas cumplir.
-      </p>
+    <div className="space-y-6">
+      {/* Tarjetas de resumen arriba, estilo CameYa */}
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-background-dark/80 px-4 py-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground-light/60 dark:text-foreground-dark/60">
+            Tu progreso
+          </p>
+          <p className="mt-1 text-2xl font-semibold">3</p>
+          <p className="mt-1 text-xs text-foreground-light/70 dark:text-foreground-dark/70">
+            trabajos completados
+          </p>
+        </div>
 
-      <FiltersBar
-        dateFilter={dateFilter}
-        onDateFilterChange={setDateFilter}
-        categoryFilter={categoryFilter}
-        onCategoryFilterChange={setCategoryFilter}
-        modeFilter={modeFilter}
-        onModeFilterChange={setModeFilter}
-      />
+        <div className="rounded-2xl border border-border bg-background-dark/80 px-4 py-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground-light/60 dark:text-foreground-dark/60">
+            Ingresos estimados
+          </p>
+          <p className="mt-1 text-2xl font-semibold">$75</p>
+          <p className="mt-1 text-xs text-foreground-light/70 dark:text-foreground-dark/70">
+            generados con CameYa
+          </p>
+        </div>
 
-      <div className="flex justify-center mt-2">
-        <JobSwipeDeck
-          jobs={filteredJobs}
-          onApply={handleApply}
-          onSkip={handleSkip}
-          onViewDetails={handleViewDetails}
+        <div className="rounded-2xl border border-border bg-background-dark/80 px-4 py-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground-light/60 dark:text-foreground-dark/60">
+            Reputación
+          </p>
+          <p className="mt-1 text-2xl font-semibold">4.8 ⭐</p>
+          <p className="mt-1 text-xs text-foreground-light/70 dark:text-foreground-dark/70">
+            basada en 12 valoraciones
+          </p>
+        </div>
+      </section>
+
+      {/* Zona principal de explorar trabajos (deck tipo Tinder) */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="font-display text-base md:text-lg font-semibold tracking-tight">
+            Explorar trabajos rápidos
+          </h2>
+          <p className="text-xs text-foreground-light/70 dark:text-foreground-dark/70">
+            Filtra por fecha, categoría o modalidad y postula en segundos.
+          </p>
+        </div>
+
+        <FiltersBar
+          dateFilter={dateFilter}
+          onDateFilterChange={setDateFilter}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
+          modeFilter={modeFilter}
+          onModeFilterChange={setModeFilter}
         />
-      </div>
+
+        <div className="flex justify-center mt-2">
+          <JobSwipeDeck
+            jobs={filteredJobs}
+            onApply={handleApply}
+            onSkip={handleSkip}
+            onViewDetails={handleViewDetails}
+          />
+        </div>
+      </section>
     </div>
   );
-};
+}

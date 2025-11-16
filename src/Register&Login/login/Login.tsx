@@ -17,7 +17,7 @@ type LoginResponse = {
     email?: string;
     email_verificado?: boolean;
     completed_onboarding?: boolean;
-    // si en el futuro agregas tipo_empleador aquí no pasa nada malo
+    perfil_completo?: boolean;
   };
   message?: string;
 };
@@ -25,7 +25,11 @@ type LoginResponse = {
 export default function Login() {
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; pwd?: string; server?: string }>({});
+  const [errors, setErrors] = useState<{
+    email?: string;
+    pwd?: string;
+    server?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
   const nav = useNavigate();
 
@@ -47,7 +51,9 @@ export default function Login() {
         body: JSON.stringify({ email, password: pwd }),
       });
 
-      const data: LoginResponse = await res.json().catch(() => ({} as LoginResponse));
+      const data: LoginResponse = await res.json().catch(
+        () => ({} as LoginResponse)
+      );
 
       if (!res.ok) {
         const msg = data?.message || "Credenciales inválidas";
@@ -57,7 +63,10 @@ export default function Login() {
 
       const token = data?.token;
       if (!token) {
-        setErrors((p) => ({ ...p, server: "No se recibió token del servidor." }));
+        setErrors((p) => ({
+          ...p,
+          server: "No se recibió token del servidor.",
+        }));
         return;
       }
 
@@ -72,7 +81,10 @@ export default function Login() {
 
       // Si el token vino expirado, corta
       if (isJwtExpired(claims)) {
-        setErrors((p) => ({ ...p, server: "La sesión ha expirado. Intenta nuevamente." }));
+        setErrors((p) => ({
+          ...p,
+          server: "La sesión ha expirado. Intenta nuevamente.",
+        }));
         return;
       }
 
@@ -84,19 +96,25 @@ export default function Login() {
         ud?.email_verificado ??
         false;
 
+      // 👇 Considera también perfil_completo
       const completedOnboarding =
         (claims?.completed_onboarding as boolean | undefined) ??
+        (claims as any)?.perfil_completo ??
         ud?.completed_onboarding ??
+        (ud as any)?.perfil_completo ??
         false;
 
+      // Tipo de cuenta: usamos también claims.role como fallback
       const tipoCuenta =
         (claims?.tipo_cuenta as string | undefined) ??
+        (claims?.role as string | undefined) ??
         (ud?.tipo_cuenta as string | undefined) ??
         "";
 
       // 🔐 Email no verificado
       if (!emailVerificado) {
-        const emailFrom = (claims?.email as string) ?? (ud?.email as string) ?? email;
+        const emailFrom =
+          (claims?.email as string) ?? (ud?.email as string) ?? email;
         nav("/check-email", { state: { email: emailFrom } });
         return;
       }
@@ -112,13 +130,19 @@ export default function Login() {
         return;
       }
 
-      // ✅ Todo listo → dashboard
-      nav("/dashboard");
+      // ✅ Todo listo → dashboard estudiante
+      if (tipoCuenta === "empleador") {
+        // De momento no tienes dashboard de empleador, los puedes mandar a la misma landing o a donde quieras
+        nav("/student/dashboard");
+      } else {
+        nav("/student/dashboard");
+      }
     } catch (e: any) {
       console.error(e);
       setErrors((p) => ({
         ...p,
-        server: "Error al iniciar sesión. Verifica tu conexión o el servidor.",
+        server:
+          "Error al iniciar sesión. Verifica tu conexión o el servidor.",
       }));
     } finally {
       setLoading(false);
@@ -132,7 +156,9 @@ export default function Login() {
           <BackNav className="mb-6" homeTo="/" />
 
           <div className="text-center mb-8">
-            <h1 className="font-display text-3xl font-semibold tracking-tight">Ingresar a CameYa</h1>
+            <h1 className="font-display text-3xl font-semibold tracking-tight">
+              Ingresar a CameYa
+            </h1>
             <p className="mt-2 text-sm text-foreground-light/70 dark:text-foreground-dark/70">
               Usa tu correo institucional <strong>.edu.ec</strong>
             </p>
@@ -161,7 +187,9 @@ export default function Login() {
               required
             />
 
-            {errors.server && <p className="text-xs text-red-600">{errors.server}</p>}
+            {errors.server && (
+              <p className="text-xs text-red-600">{errors.server}</p>
+            )}
 
             <button
               type="submit"
@@ -173,7 +201,10 @@ export default function Login() {
           </form>
 
           <div className="mt-4 text-center text-sm">
-            <a className="text-primary font-semibold hover:underline" href="/register">
+            <a
+              className="text-primary font-semibold hover:underline"
+              href="/register"
+            >
               Crear cuenta
             </a>
           </div>

@@ -1,3 +1,4 @@
+// src/App.tsx
 import { Routes, Route } from "react-router-dom";
 import EmailCheck from "./pages/auth/EmailCheck";
 import VerifyEmail from "./pages/auth/VerifyEmail";
@@ -33,21 +34,22 @@ export default function App() {
       <Route path="/register" element={<ChooseRegister />} />
       <Route path="/register/worker" element={<WorkerRegister />} />
       <Route path="/register/employer" element={<EmployerRegister />} />
-      <Route path="/register/email-confirmation" element={<Confirmacion_Email />} />
+      <Route
+        path="/register/email-confirmation"
+        element={<Confirmacion_Email />}
+      />
 
       {/* Auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/check-email" element={<EmailCheck />} />
       <Route path="/verify" element={<VerifyEmail />} />
 
-      {/* Onboarding protegido (ruta canónica) */}
+      {/* Onboarding estudiante (sin OnboardingGate, solo protegido por token) */}
       <Route
         path="/onboarding"
         element={
           <Protected>
-            <OnboardingGate>
-              <WorkerPost />
-            </OnboardingGate>
+            <WorkerPost />
           </Protected>
         }
       />
@@ -57,9 +59,7 @@ export default function App() {
         path="/register/worker/post"
         element={
           <Protected>
-            <OnboardingGate>
-              <WorkerPost />
-            </OnboardingGate>
+            <WorkerPost />
           </Protected>
         }
       />
@@ -69,29 +69,31 @@ export default function App() {
         path="/register/employer/post"
         element={
           <Protected>
-            <OnboardingGate>
-              <EmployerPost />
-            </OnboardingGate>
+            <EmployerPost />
           </Protected>
         }
       />
 
       {/* Dashboard estudiante (ruta principal) */}
       <Route
-        path="/dashboard"
+        path="/student/dashboard"
         element={
           <Protected>
-            <StudentDashboard />
+            <OnboardingGate>
+              <StudentDashboard />
+            </OnboardingGate>
           </Protected>
         }
       />
 
-      {/* Alias explícito por si en algún momento quieres /dashboard/student */}
+      {/* Alias para no romper nada viejo */}
       <Route
-        path="/dashboard/student"
+        path="/dashboard"
         element={
           <Protected>
-            <StudentDashboard />
+            <OnboardingGate>
+              <StudentDashboard />
+            </OnboardingGate>
           </Protected>
         }
       />

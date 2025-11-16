@@ -218,11 +218,6 @@ export default function WorkerPost({
 
   /**
    * ✅ ÚNICO momento en que se llama a la API.
-   * Base64: empaquetamos la foto dentro del JSON para /protected/completar-perfil (Content-Type: application/json)
-   * 1) Convertir foto a base64 (dataURL) si existe
-   * 2) Construir payload JSON con TODOS los campos y la foto base64
-   * 3) PATCH a /protected/completar-perfil
-   * 4) Redirigir al dashboard de estudiante
    */
   async function submitAll() {
     if (!userId) return;
@@ -306,9 +301,25 @@ export default function WorkerPost({
         body: JSON.stringify(payload),
       }).then(handleJson);
 
+      // ✅ Actualizar auth_user en localStorage con perfil_completo = true
+      try {
+        const raw = localStorage.getItem("auth_user");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const updated = {
+            ...parsed,
+            perfil_completo: true,
+            completed_onboarding: true,
+          };
+          localStorage.setItem("auth_user", JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.error("No se pudo actualizar auth_user en localStorage", e);
+      }
+
       // 3) Finalizar onboarding → dashboard de estudiante
       if (onFinish) onFinish();
-      else nav("/dashboard/student");
+      else nav("/student/dashboard");
     } catch (e) {
       console.error(e);
       // El alert ya se muestra en handleJson cuando hay status no-OK

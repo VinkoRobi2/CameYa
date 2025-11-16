@@ -1,118 +1,82 @@
 // src/dashboards/students/index.tsx
 import { useState } from "react";
 import { DashboardShell } from "../common/components/DashboardShell";
-import type { UserRatingSummary } from "../common/types";
-import { RatingStars } from "../common/components/RatingStars";
-import { StudentSidebar } from "./components/StudentSidebar";
-import { StudentHome } from "./pages/StudentHome";
-import { StudentApplications } from "./pages/StudentApplications";
-import { StudentProfile } from "./pages/StudentProfile";
-import { StudentCompleted } from "./pages/StudentCompleted";
+import { StudentSidebar, type StudentTab } from "./components/StudentSidebar";
+import StudentHome from "./pages/StudentHome";
 
-export type StudentTab = "home" | "applications" | "completed" | "profile";
-
-const mockRating: UserRatingSummary = {
-  average: 4.8,
-  totalRatings: 15,
-};
-
-const getTabTitle = (tab: StudentTab): string => {
-  switch (tab) {
-    case "home":
-      return "Explorar trabajos";
-    case "applications":
-      return "Mis postulaciones";
-    case "completed":
-      return "Trabajos completados";
-    case "profile":
-      return "Mi perfil";
-    default:
-      return "";
-  }
-};
-
-const getTabSubtitle = (tab: StudentTab): string => {
-  switch (tab) {
-    case "home":
-      return "Encuentra trabajos rápidos y postula en minutos.";
-    case "applications":
-      return "Revisa el estado de cada postulación fácilmente.";
-    case "completed":
-      return "Lleva el registro de los trabajos que ya realizaste.";
-    case "profile":
-      return "Ajusta la información que verán los empleadores.";
-    default:
-      return "";
-  }
-};
-
-const StudentDashboard = () => {
-  const [activeTab, setActiveTab] = useState<StudentTab>("home");
-
-  const header = (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg md:text-xl font-semibold">
-            {getTabTitle(activeTab)}
-          </h1>
-          <p className="text-xs md:text-sm text-slate-400">
-            {getTabSubtitle(activeTab)}
-          </p>
-        </div>
-        <div className="hidden sm:block">
-          <RatingStars rating={mockRating} size="sm" />
-        </div>
-      </div>
-
-      {/* Navegación móvil (tabs simples) */}
-      <div className="mt-2 flex gap-2 md:hidden overflow-x-auto">
-        {[
-          { id: "home", label: "Inicio" },
-          { id: "applications", label: "Postulaciones" },
-          { id: "completed", label: "Completados" },
-          { id: "profile", label: "Perfil" },
-        ].map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setActiveTab(item.id as StudentTab)}
-            className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium border ${
-              activeTab === item.id
-                ? "bg-sky-500 text-white border-sky-500"
-                : "bg-slate-900 text-slate-300 border-slate-700"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case "home":
-        return <StudentHome />;
-      case "applications":
-        return <StudentApplications />;
-      case "completed":
-        return <StudentCompleted />;
-      case "profile":
-        return <StudentProfile rating={mockRating} />;
-      default:
-        return null;
-    }
-  };
+export default function StudentDashboard() {
+  const [activeTab, setActiveTab] = useState<StudentTab>("explorar");
 
   return (
     <DashboardShell
       sidebar={<StudentSidebar activeTab={activeTab} onTabChange={setActiveTab} />}
-      header={header}
+      header={<Header activeTab={activeTab} onTabChange={setActiveTab} />}
     >
-      {renderContent()}
+      {activeTab === "explorar" && <StudentHome />}
+      {activeTab === "postulaciones" && (
+        <div className="text-sm text-foreground-light/70 dark:text-foreground-dark/70">
+          Aquí irán tus postulaciones.
+        </div>
+      )}
+      {activeTab === "completados" && (
+        <div className="text-sm text-foreground-light/70 dark:text-foreground-dark/70">
+          Aquí verás tus trabajos completados.
+        </div>
+      )}
+      {activeTab === "perfil" && (
+        <div className="text-sm text-foreground-light/70 dark:text-foreground-dark/70">
+          Aquí podrás ver y editar tu perfil público.
+        </div>
+      )}
     </DashboardShell>
   );
+}
+
+type HeaderProps = {
+  activeTab: StudentTab;
+  onTabChange: (tab: StudentTab) => void;
 };
 
-export default StudentDashboard;
+const TABS: { id: StudentTab; label: string }[] = [
+  { id: "explorar", label: "Explorar" },
+  { id: "postulaciones", label: "Postulaciones" },
+  { id: "completados", label: "Completados" },
+  { id: "perfil", label: "Perfil" },
+];
+
+function Header({ activeTab, onTabChange }: HeaderProps) {
+  return (
+    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 className="font-display text-lg md:text-xl font-semibold tracking-tight">
+          Hola, estudiante 👋
+        </h1>
+        <p className="text-xs md:text-sm text-foreground-light/70 dark:text-foreground-dark/70">
+          Explora trabajos flash, revisa tus postulaciones y cuida tu reputación en CameYa.
+        </p>
+      </div>
+
+      {/* Tabs solo en mobile / tablet; en desktop manda el sidebar */}
+      <div className="mt-1 flex gap-2 md:hidden">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onTabChange(tab.id)}
+              className={[
+                "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                isActive
+                  ? "bg-primary text-white border-primary shadow-sm"
+                  : "bg-transparent text-foreground-light/80 dark:text-foreground-dark/80 border-border hover:bg-primary/5",
+              ].join(" ")}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
