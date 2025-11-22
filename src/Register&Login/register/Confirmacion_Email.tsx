@@ -65,7 +65,7 @@ export default function EmailConfirmation() {
         )}
 
         <Link
-          to="/"
+          to="/vergal-email"
           className="text-sm text-primary font-semibold hover:underline"
         >
           ← Volver al inicio

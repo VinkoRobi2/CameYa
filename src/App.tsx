@@ -51,7 +51,7 @@ const App: React.FC = () => {
       <Route path="/register/worker" element={<WorkerRegister />} />
       <Route path="/register/employer" element={<EmployerRegister />} />
       <Route path="/email-check" element={<EmailCheck />} />
-      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/verify-email/:token" element={<VerifyEmail />} />
       <Route path="/confirm-email" element={<Confirmacion_Email />} />
 
       {/* Onboarding estudiante */}
