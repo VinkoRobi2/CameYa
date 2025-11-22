@@ -11,87 +11,17 @@ import BackNav from "../../../ui/BackNav";
 import { decodeJWT } from "../../../global_helpers/jwt";
 import { API_BASE } from "../../../global_helpers/api";
 
-type EmployerType = "persona" | "empresa";
-
-type SimpleStepperProps = {
-  steps: string[];
-  currentStep: number;
-  onStepClick?: (index: number) => void;
-};
-
-function SimpleStepper({ steps, currentStep, onStepClick }: SimpleStepperProps) {
-  return (
-    <ol className="flex flex-wrap items-center gap-2 mb-6 text-xs md:text-sm">
-      {steps.map((label, idx) => {
-        const isActive = idx === currentStep;
-        const isCompleted = idx < currentStep;
-
-        return (
-          <li key={label} className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onStepClick?.(idx)}
-              className={`w-6 h-6 rounded-full border flex items-center justify-center text-[11px] transition-colors ${
-                isActive
-                  ? "bg-primary text-white border-primary"
-                  : isCompleted
-                  ? "bg-primary/10 text-primary border-primary/40"
-                  : "border-primary/30 text-foreground-light/70"
-              }`}
-            >
-              {idx + 1}
-            </button>
-            <span
-              className={`${
-                isActive
-                  ? "font-semibold text-foreground-light"
-                  : "text-foreground-light/70"
-              }`}
-            >
-              {label}
-            </span>
-            {idx !== steps.length - 1 && (
-              <span className="w-6 h-px bg-primary/20" aria-hidden="true" />
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-// 🔹 Persona: 5 pasos
-const stepsPersona = [
-  "Tu perfil",
-  "Ubicación",
-  "Áreas de interés",
-  "Enlaces",
-  "Revisión",
-];
-
-// 🔹 Empresa: 3 pasos
-const stepsEmpresa = ["Datos empresa", "Sobre la empresa", "Revisión"];
+// nuevos imports según la nueva estructura
+import SimpleStepper from "./components/SimpleStepper";
+import {
+  stepsPersona,
+  stepsEmpresa,
+  AREAS_INTERES,
+  type EmployerType,
+} from "./utils/constants";
+import { fileToBase64 } from "./utils/fileToBase64";
 
 const ONBOARDING_URL = `${API_BASE}/protected/completar-perfil-empleador`;
-
-const AREAS_INTERES = [
-  "Clases y tutorías",
-  "Eventos y logística",
-  "Ventas / encuestas",
-  "Ayuda en casa",
-  "Tecnología / soporte",
-  "Oficina / administración",
-  "Otros",
-];
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string) || "");
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function EmployerPost() {
   const navigate = useNavigate();
@@ -157,8 +87,19 @@ export default function EmployerPost() {
       try {
         const u = JSON.parse(storedUserRaw);
 
+        const tipoCuenta: string =
+          u?.tipo_cuenta ??
+          u?.role ??
+          u?.user_data?.tipo_cuenta ??
+          u?.user_data?.role ??
+          "";
+
         if (u.completed_onboarding) {
-          navigate("/dashboard");
+          if (tipoCuenta === "empleador") {
+            navigate("/employer/dashboard");
+          } else {
+            navigate("/student/dashboard");
+          }
           return;
         }
 
@@ -207,10 +148,21 @@ export default function EmployerPost() {
       }
     } else {
       const claims: any = decodeJWT(token);
+
+      const tipoCuenta: string =
+        (claims?.tipo_cuenta as string | undefined) ??
+        (claims?.role as string | undefined) ??
+        "";
+
       if (claims?.completed_onboarding) {
-        navigate("/dashboard");
+        if (tipoCuenta === "empleador") {
+          navigate("/employer/dashboard");
+        } else {
+          navigate("/student/dashboard");
+        }
         return;
       }
+
       const t =
         (claims?.tipo_empleador as string | undefined) ??
         (claims?.tipo_identidad as string | undefined);
@@ -454,19 +406,35 @@ export default function EmployerPost() {
         return;
       }
 
-      // Actualizar flag en localStorage si quieres usarlo en el front
+      // Actualizar flag en localStorage y obtener tipo_cuenta
+      let tipoCuenta = "";
       const userRaw = localStorage.getItem("auth_user");
       if (userRaw) {
         try {
           const u = JSON.parse(userRaw);
           u.completed_onboarding = true;
+          u.perfil_completo = true;
+          tipoCuenta = u?.tipo_cuenta ?? u?.role ?? "";
           localStorage.setItem("auth_user", JSON.stringify(u));
         } catch {
           // ignore
         }
       }
 
-      navigate("/dashboard");
+      if (!tipoCuenta) {
+        const claims: any = decodeJWT(token);
+        tipoCuenta =
+          (claims?.tipo_cuenta as string | undefined) ??
+          (claims?.role as string | undefined) ??
+          "";
+      }
+
+      // Redirección final según tipo de cuenta
+      if (tipoCuenta === "empleador") {
+        navigate("/employer/dashboard");
+      } else {
+        navigate("/student/dashboard");
+      }
     } catch (error) {
       console.error(error);
       alert(
@@ -1039,7 +1007,9 @@ export default function EmployerPost() {
             <div className="space-y-1 text-xs text-foreground-light/85">
               <div>
                 <p className="font-semibold">
-                  {isPersona ? "Nombre completo" : "Persona de contacto"}
+                  {tipoEmpleador === "persona"
+                    ? "Nombre completo"
+                    : "Persona de contacto"}
                 </p>
                 <p>{fullPrivateName || "—"}</p>
               </div>
@@ -1068,7 +1038,7 @@ export default function EmployerPost() {
                 <p>{whatsapp || privatePhone || "—"}</p>
               </div>
 
-              {!isPersona && (
+              {tipoEmpleador === "empresa" && (
                 <>
                   <div>
                     <p className="font-semibold">Razón social</p>

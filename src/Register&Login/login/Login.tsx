@@ -80,6 +80,8 @@ export default function Login() {
 
       // Si el token vino expirado, corta
       if (isJwtExpired(claims)) {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
         setErrors((p) => ({
           ...p,
           server: "La sesión ha expirado. Intenta nuevamente.",
@@ -120,7 +122,7 @@ export default function Login() {
         tipoCuenta,
       });
 
-      // 🔐 Email no verificado
+      // 🔐 Email no verificado → mandar a check-email
       if (!emailVerificado) {
         const emailFrom =
           (claims?.email as string) ?? (ud?.email as string) ?? email;

@@ -17,11 +17,37 @@ import { WorkerPost } from "./Register&Login/register/WorkerPost";
 // Dashboard de estudiantes
 import StudentDashboard from "./dashboards/students";
 
+// Dashboard de empleadores
+import EmployerDashboard from "./dashboards/employers/pages/EmployerDashboard";
+
 // Tu landing real dentro de /landingPage
 import LandingPage from "./landingPage/LandingPage";
 
 // Selector para elegir tipo de registro
 import ChooseRegister from "./Register&Login/register/ChooseRegister";
+
+// Componente que decide a qué dashboard ir según el tipo de cuenta
+function RoleDashboardRouter() {
+  // Ajusta esto a cómo estés guardando los datos del usuario
+  const raw = localStorage.getItem("user_data");
+  let tipoCuenta: string | null = null;
+
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      tipoCuenta = parsed?.tipo_cuenta ?? null;
+    } catch {
+      tipoCuenta = null;
+    }
+  }
+
+  if (tipoCuenta === "empleador") {
+    return <EmployerDashboard />;
+  }
+
+  // Por defecto, estudiante
+  return <StudentDashboard />;
+}
 
 export default function App() {
   return (
@@ -73,11 +99,10 @@ export default function App() {
         }
       />
 
-      {/* Dashboard estudiante (ruta principal) */}
+      {/* Dashboard estudiante (ruta principal explícita) */}
       <Route
         path="/student/dashboard"
-        element=
-        {
+        element={
           <Protected>
             <OnboardingGate>
               <StudentDashboard />
@@ -86,25 +111,25 @@ export default function App() {
         }
       />
 
-      {/* Dashboard empleador (por ahora usando EmployerPost como placeholder) */}
+      {/* Dashboard empleador */}
       <Route
         path="/employer/dashboard"
         element={
           <Protected>
             <OnboardingGate>
-              <EmployerPost />
+              <EmployerDashboard />
             </OnboardingGate>
           </Protected>
         }
       />
 
-      {/* Alias para no romper nada viejo */}
+      {/* Alias genérico /dashboard -> decide según tipo_cuenta */}
       <Route
         path="/dashboard"
         element={
           <Protected>
             <OnboardingGate>
-              <StudentDashboard />
+              <RoleDashboardRouter />
             </OnboardingGate>
           </Protected>
         }
