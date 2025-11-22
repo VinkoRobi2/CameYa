@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom";
 import Input from "../../components/Input";
 import PageTransition from "../../../ui/PageTransition";
 import BackNav from "../../../ui/BackNav";
-import { decodeJWT } from "../../../global_helpers/jwt";
 import { API_BASE } from "../../../global_helpers/api";
 
 // nuevos imports según la nueva estructura
@@ -20,11 +19,19 @@ import {
   type EmployerType,
 } from "./utils/constants";
 import { fileToBase64 } from "./utils/fileToBase64";
+import { useAuth } from "../../../auth/AuthContext";
 
 const ONBOARDING_URL = `${API_BASE}/protected/completar-perfil-empleador`;
 
 export default function EmployerPost() {
   const navigate = useNavigate();
+  const {
+    token: authToken,
+    userData,
+    isEmployer,
+    isStudent,
+    updateUserData,
+  } = useAuth();
 
   const [tipoEmpleador, setTipoEmpleador] = useState<EmployerType>("persona");
   const [currentStep, setCurrentStep] = useState(0);
@@ -71,134 +78,84 @@ export default function EmployerPost() {
   const [privateCedulaRuc, setPrivateCedulaRuc] = useState("");
   const [privatePhone, setPrivatePhone] = useState("");
 
-  const steps =
-    tipoEmpleador === "persona" ? stepsPersona : stepsEmpresa;
+  const steps = tipoEmpleador === "persona" ? stepsPersona : stepsEmpresa;
 
-  // Detectar tipo de empleador + proteger ruta + prefill phone/ubicación
+  // Detectar tipo de empleador + proteger ruta + prefill
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
+    if (!authToken || !userData) {
       navigate("/login");
       return;
     }
 
-    const storedUserRaw = localStorage.getItem("auth_user");
-    if (storedUserRaw) {
-      try {
-        const u = JSON.parse(storedUserRaw);
+    // Sólo empleadores deberían entrar aquí
+    const tipoCuenta: string =
+      userData.tipo_cuenta ?? (userData as any).role ?? "";
 
-        const tipoCuenta: string =
-          u?.tipo_cuenta ??
-          u?.role ??
-          u?.user_data?.tipo_cuenta ??
-          u?.user_data?.role ??
-          "";
-
-        if (u.completed_onboarding) {
-          if (tipoCuenta === "empleador") {
-            navigate("/employer/dashboard");
-          } else {
-            navigate("/student/dashboard");
-          }
-          return;
-        }
-
-        // Tipo de empleador principal
-        const t =
-          (u.tipo_empleador as string | undefined) ??
-          (u.tipo_identidad as string | undefined);
-
-        if (t) {
-          const normalized = t.toLowerCase();
-          if (normalized === "persona" || normalized === "empresa") {
-            setTipoEmpleador(normalized as EmployerType);
-          }
-        } else if (u.tipo_cuenta === "empleador") {
-          // Fallback: si solo sabemos que es empleador, asumimos empresa
-          setTipoEmpleador("empresa");
-        }
-
-        // Datos privados
-        if (typeof u.nombre === "string") setPrivateName(u.nombre);
-        if (typeof u.apellido === "string") setPrivateLastName(u.apellido);
-        if (typeof u.email === "string") setPrivateEmail(u.email);
-        if (typeof u.telefono === "string") {
-          setPrivatePhone(u.telefono);
-          // Prefill WhatsApp con el teléfono registrado
-          setWhatsapp(u.telefono);
-        }
-        if (typeof u.cedula_ruc === "string") {
-          setPrivateCedulaRuc(u.cedula_ruc);
-        } else if (typeof u.cedula === "string") {
-          setPrivateCedulaRuc(u.cedula);
-        } else if (typeof u.ruc === "string") {
-          setPrivateCedulaRuc(u.ruc);
-        }
-
-        if (typeof u.foto_perfil === "string" && u.foto_perfil) {
-          setProfilePhotoPreview(u.foto_perfil);
-        }
-
-        // Prefill ubicación si la tienes
-        if (u.ciudad && typeof u.ciudad === "string") {
-          setLocation(u.ciudad);
-        }
-      } catch {
-        // ignore
+    if (tipoCuenta !== "empleador") {
+      // Si es estudiante y cayó aquí por error, mándalo a su dashboard/onboarding
+      if (tipoCuenta === "estudiante") {
+        navigate("/student/dashboard", { replace: true });
+      } else {
+        navigate("/", { replace: true });
       }
-    } else {
-      const claims: any = decodeJWT(token);
-
-      const tipoCuenta: string =
-        (claims?.tipo_cuenta as string | undefined) ??
-        (claims?.role as string | undefined) ??
-        "";
-
-      if (claims?.completed_onboarding) {
-        if (tipoCuenta === "empleador") {
-          navigate("/employer/dashboard");
-        } else {
-          navigate("/student/dashboard");
-        }
-        return;
-      }
-
-      const t =
-        (claims?.tipo_empleador as string | undefined) ??
-        (claims?.tipo_identidad as string | undefined);
-      if (t) {
-        const normalized = t.toLowerCase();
-        if (normalized === "persona" || normalized === "empresa") {
-          setTipoEmpleador(normalized as EmployerType);
-        }
-      } else if (claims?.tipo_cuenta === "empleador") {
-        setTipoEmpleador("empresa");
-      }
-
-      if (claims?.nombre && typeof claims.nombre === "string") {
-        setPrivateName(claims.nombre);
-      }
-      if (claims?.apellido && typeof claims.apellido === "string") {
-        setPrivateLastName(claims.apellido);
-      }
-      if (claims?.email && typeof claims.email === "string") {
-        setPrivateEmail(claims.email);
-      }
-      if (claims?.telefono && typeof claims.telefono === "string") {
-        setPrivatePhone(claims.telefono);
-        setWhatsapp(claims.telefono);
-      }
-      if (claims?.cedula_ruc && typeof claims.cedula_ruc === "string") {
-        setPrivateCedulaRuc(claims.cedula_ruc);
-      }
-      if (claims?.foto_perfil && typeof claims.foto_perfil === "string") {
-        setProfilePhotoPreview(claims.foto_perfil);
-      }
-      if (claims?.ciudad && typeof claims.ciudad === "string") {
-        setLocation(claims.ciudad);
-      }
+      return;
     }
-  }, [navigate]);
+
+    // Si ya completó el perfil, redirigimos al dashboard
+    const perfilCompleto = Boolean(
+      userData.perfil_completo ??
+        (userData as any).completed_onboarding ??
+        false
+    );
+    if (perfilCompleto) {
+      navigate("/employer/dashboard", { replace: true });
+      return;
+    }
+
+    // Tipo de empleador principal
+    const t =
+      (userData as any).tipo_empleador ??
+      userData.tipo_identidad ??
+      (userData as any).tipoIdentidad;
+
+    if (typeof t === "string") {
+      const normalized = t.toLowerCase();
+      if (normalized === "persona" || normalized === "empresa") {
+        setTipoEmpleador(normalized as EmployerType);
+      }
+    } else if (tipoCuenta === "empleador") {
+      // Fallback: si solo sabemos que es empleador, asumimos empresa
+      setTipoEmpleador("empresa");
+    }
+
+    // Datos privados
+    if (typeof userData.nombre === "string") setPrivateName(userData.nombre);
+    if (typeof (userData as any).apellido === "string")
+      setPrivateLastName((userData as any).apellido);
+    if (typeof userData.email === "string") setPrivateEmail(userData.email);
+    if (typeof (userData as any).telefono === "string") {
+      const tel = (userData as any).telefono;
+      setPrivatePhone(tel);
+      // Prefill WhatsApp con el teléfono registrado
+      setWhatsapp(tel);
+    }
+    if (typeof (userData as any).cedula_ruc === "string") {
+      setPrivateCedulaRuc((userData as any).cedula_ruc);
+    } else if (typeof (userData as any).cedula === "string") {
+      setPrivateCedulaRuc((userData as any).cedula);
+    } else if (typeof (userData as any).ruc === "string") {
+      setPrivateCedulaRuc((userData as any).ruc);
+    }
+
+    if (typeof userData.foto_perfil === "string" && userData.foto_perfil) {
+      setProfilePhotoPreview(userData.foto_perfil);
+    }
+
+    // Prefill ubicación si la tienes
+    if ((userData as any).ciudad && typeof (userData as any).ciudad === "string") {
+      setLocation((userData as any).ciudad);
+    }
+  }, [authToken, userData, navigate]);
 
   const handleProfilePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -323,8 +280,8 @@ export default function EmployerPost() {
   const handleSubmit = async () => {
     try {
       setSaving(true);
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
+
+      if (!authToken) {
         navigate("/login");
         return;
       }
@@ -340,15 +297,14 @@ export default function EmployerPost() {
       }
 
       const payload: any = {
-        // Estos campos extra los puede ignorar el backend, pero mantenemos consistencia
         tipo_cuenta: "empleador",
         tipo_empleador: tipoEmpleador,
       };
 
       if (tipoEmpleador === "persona") {
-        // 🔹 Mapea EXACTAMENTE al struct de persona
+        // 🔹 persona
         payload.foto_perfil = profileBase64 || "";
-        payload.logo_empresa = ""; // persona no usa logo, backend lo setea vacío
+        payload.logo_empresa = ""; // persona no usa logo
         payload.frase_corta = headline.trim();
         payload.biografia = bio.trim();
         payload.ubicacion = location.trim();
@@ -358,18 +314,17 @@ export default function EmployerPost() {
         payload.facebook_ig = socialProfile.trim();
         payload.otros_links = otherLink.trim();
 
-        // Campos empresa los dejamos vacíos, el backend simplemente los ignora
+        // Campos empresa vacíos
         payload.dominio_corporativo = "";
         payload.razon_social = "";
         payload.area_actividad_principal = "";
         payload.descripcion_empresa = "";
         payload.nombre_comercial = "";
       } else {
-        // 🔹 Empresa (mapeo 1:1 a EmployerProfileUpdateRequest)
+        // 🔹 Empresa
         payload.foto_perfil = profileBase64 || "";
         payload.logo_empresa = logoBase64 || "";
         payload.frase_corta = empresaHeadline.trim();
-        // Usamos la misma descripción para biografia y descripcion_empresa
         payload.biografia = empresaBio.trim();
         payload.descripcion_empresa = empresaBio.trim();
         payload.ubicacion = location.trim();
@@ -382,9 +337,6 @@ export default function EmployerPost() {
         payload.razon_social = razonSocial.trim();
         payload.area_actividad_principal = actividadPrincipal.trim();
         payload.nombre_comercial = companyName.trim();
-
-        // Website se puede agregar luego al struct si quieres persistirlo;
-        // por ahora el backend lo ignorará
         payload.website = website.trim();
       }
 
@@ -392,7 +344,7 @@ export default function EmployerPost() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -406,34 +358,19 @@ export default function EmployerPost() {
         return;
       }
 
-      // Actualizar flag en localStorage y obtener tipo_cuenta
-      let tipoCuenta = "";
-      const userRaw = localStorage.getItem("auth_user");
-      if (userRaw) {
-        try {
-          const u = JSON.parse(userRaw);
-          u.completed_onboarding = true;
-          u.perfil_completo = true;
-          tipoCuenta = u?.tipo_cuenta ?? u?.role ?? "";
-          localStorage.setItem("auth_user", JSON.stringify(u));
-        } catch {
-          // ignore
-        }
-      }
+      // ✅ Actualizar contexto de auth
+      updateUserData({
+        perfil_completo: true,
+        completed_onboarding: true,
+      });
 
-      if (!tipoCuenta) {
-        const claims: any = decodeJWT(token);
-        tipoCuenta =
-          (claims?.tipo_cuenta as string | undefined) ??
-          (claims?.role as string | undefined) ??
-          "";
-      }
-
-      // Redirección final según tipo de cuenta
-      if (tipoCuenta === "empleador") {
-        navigate("/employer/dashboard");
+      // Redirección final según tipo de cuenta (por seguridad)
+      if (isEmployer) {
+        navigate("/employer/dashboard", { replace: true });
+      } else if (isStudent) {
+        navigate("/student/dashboard", { replace: true });
       } else {
-        navigate("/student/dashboard");
+        navigate("/", { replace: true });
       }
     } catch (error) {
       console.error(error);
@@ -618,7 +555,7 @@ export default function EmployerPost() {
     } else {
       // 🔹 FLUJO EMPRESA
       if (currentStep === 0) {
-        // Datos empresa (incluyendo foto de perfil, razón social y actividad principal)
+        // Datos empresa
         return (
           <div className="space-y-4">
             {/* Foto de perfil de la persona que usa la cuenta (OBLIGATORIA) */}
@@ -736,7 +673,7 @@ export default function EmployerPost() {
       }
 
       if (currentStep === 1) {
-        // Sobre la empresa + enlaces (incluye frase corta, categorías y dominio corporativo)
+        // Sobre la empresa + enlaces
         return (
           <div className="space-y-4">
             <Input

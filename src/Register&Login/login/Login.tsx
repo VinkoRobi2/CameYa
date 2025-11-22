@@ -5,6 +5,7 @@ import BackNav from "../../ui/BackNav";
 import PageTransition from "../../ui/PageTransition";
 import { LOGIN_URL } from "../../global_helpers/api";
 import { decodeJWT, isJwtExpired } from "../../global_helpers/jwt";
+import { useAuth } from "../../auth/AuthContext";
 
 type LoginResponse = {
   token?: string;
@@ -31,6 +32,7 @@ export default function Login() {
   }>({});
   const [loading, setLoading] = useState(false);
   const nav = useNavigate();
+  const { login } = useAuth();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,12 +52,17 @@ export default function Login() {
         body: JSON.stringify({ email, password: pwd }),
       });
 
-      const data: LoginResponse = await res.json().catch(
-        () => ({} as LoginResponse)
-      );
+      const text = await res.text();
+      let data: LoginResponse = {};
+      try {
+        data = JSON.parse(text) as LoginResponse;
+      } catch {
+        // respuesta no JSON
+      }
 
       if (!res.ok) {
-        const msg = data?.message || "Credenciales inválidas";
+        const msg =
+          (data && data.message) || "Credenciales inválidas o error del servidor.";
         setErrors((p) => ({ ...p, server: msg }));
         return;
       }
@@ -69,19 +76,9 @@ export default function Login() {
         return;
       }
 
-      // ✅ Guardar token y respaldo de user_data
-      localStorage.setItem("auth_token", token);
-      if (data?.user_data) {
-        localStorage.setItem("auth_user", JSON.stringify(data.user_data));
-      }
-
-      // Decodificar claims del JWT
+      // Opcional: validamos expiración del token antes de guardar nada
       const claims = decodeJWT(token);
-
-      // Si el token vino expirado, corta
       if (isJwtExpired(claims)) {
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("auth_user");
         setErrors((p) => ({
           ...p,
           server: "La sesión ha expirado. Intenta nuevamente.",
@@ -89,65 +86,10 @@ export default function Login() {
         return;
       }
 
-      // Fallback a user_data del backend
-      const ud = data?.user_data ?? {};
-
-      // ✅ Email verificado: si CUALQUIERA dice true
-      const emailVerificado = !!(
-        (claims?.email_verificado as boolean | undefined) ||
-        (claims as any)?.emailVerified ||
-        ud?.email_verificado
-      );
-
-      // ✅ Onboarding completado: OR lógico entre claims y user_data
-      const completedOnboarding = !!(
-        (claims?.completed_onboarding as boolean | undefined) ||
-        (claims as any)?.perfil_completo ||
-        ud?.completed_onboarding ||
-        (ud as any)?.perfil_completo
-      );
-
-      // Tipo de cuenta: usamos también claims.role como fallback
-      const tipoCuenta =
-        (claims?.tipo_cuenta as string | undefined) ??
-        (claims?.role as string | undefined) ??
-        (ud?.tipo_cuenta as string | undefined) ??
-        "";
-
-      console.log("LOGIN DEBUG =>", {
-        claims,
-        user_data: ud,
-        emailVerificado,
-        completedOnboarding,
-        tipoCuenta,
-      });
-
-      // 🔐 Email no verificado → mandar a check-email
-      if (!emailVerificado) {
-        const emailFrom =
-          (claims?.email as string) ?? (ud?.email as string) ?? email;
-        nav("/check-email", { state: { email: emailFrom } });
-        return;
-      }
-
-      // 🔄 Onboarding pendiente → depende del tipo de cuenta
-      if (!completedOnboarding) {
-        if (tipoCuenta === "empleador") {
-          nav("/register/employer/post");
-        } else {
-          // estudiante, worker, etc.
-          nav("/register/worker/post");
-        }
-        return;
-      }
-
-      // ✅ Todo listo → dashboard según rol
-      if (tipoCuenta === "empleador") {
-        nav("/employer/dashboard");
-      } else {
-        // estudiante / worker
-        nav("/student/dashboard");
-      }
+      // ✅ Delegamos toda la persistencia + navegación al AuthContext
+      // Pasamos el user_data que venga del back (o en su defecto las claims)
+      const userPayload = data.user_data ?? claims ?? {};
+      login(token, userPayload);
     } catch (e: any) {
       console.error(e);
       setErrors((p) => ({
@@ -212,12 +154,13 @@ export default function Login() {
           </form>
 
           <div className="mt-4 text-center text-sm">
-            <a
+            <button
+              type="button"
               className="text-primary font-semibold hover:underline"
-              href="/register"
+              onClick={() => nav("/register")}
             >
               Crear cuenta
-            </a>
+            </button>
           </div>
         </div>
       </section>

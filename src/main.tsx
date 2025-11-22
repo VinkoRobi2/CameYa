@@ -8,7 +8,7 @@ import ScrollToTop from "./ui/ScrollToTop";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <BrowserRouter /* basename="/camella" si despliegas bajo subruta */>
+    <BrowserRouter>
       <AuthProvider>
         <ScrollToTop />
         <App />

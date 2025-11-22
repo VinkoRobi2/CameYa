@@ -1,24 +1,28 @@
-// src/routes/Protected.tsx
-import { useEffect, useState, type ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { type ReactNode } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
-type Props = { children: ReactNode };
+interface ProtectedProps {
+  children: ReactNode;
+}
 
-export default function Protected({ children }: Props) {
-  const [allowed, setAllowed] = useState<boolean | null>(null);
+export default function Protected({ children }: ProtectedProps) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
-  useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    setAllowed(!!token);
-  }, []);
-
-  if (allowed === null) {
-    // pequeño fallback, puedes poner un skeleton si quieres
+  if (isLoading) {
+    // Puedes poner aquí un loader bonito si quieres
     return null;
   }
 
-  if (!allowed) {
-    return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
+    );
   }
 
   return <>{children}</>;

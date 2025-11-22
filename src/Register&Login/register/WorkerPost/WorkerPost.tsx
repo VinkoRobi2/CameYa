@@ -10,11 +10,11 @@ import LinkFields from "./components/LinkFields";
 import ReviewSubmit from "./components/ReviewSubmit";
 import { useOnboarding } from "./hooks/useOnboarding";
 import { SECTORES } from "./utils/constants";
-import { decodeJWT } from "../../../global_helpers/jwt";
 import { API_BASE } from "../../../global_helpers/api";
 import type { AvailabilityKey } from "./types";
+import { useAuth } from "../../../auth/AuthContext";
 
-// Disponibilidad mostrada en UI  ->  Valor que espera el backend (ejemplo tuyo)
+// Disponibilidad mostrada en UI  ->  Valor que espera el backend
 const AVAILABILITY_OPTIONS: { value: AvailabilityKey; label: string }[] = [
   { value: "part-time", label: "Parcial (tardes/noches)" },
   { value: "weekends", label: "Fines de semana" },
@@ -22,49 +22,12 @@ const AVAILABILITY_OPTIONS: { value: AvailabilityKey; label: string }[] = [
 ];
 const AVAILABILITY_MAP: Record<AvailabilityKey, string> = {
   "part-time": "medio-tiempo",
-  "weekends": "fines-de-semana",
+  weekends: "fines-de-semana",
   "fulltime-short": "tiempo-completo-corto",
 };
+
 function isAvailabilityKey(v: string): v is AvailabilityKey {
   return v === "part-time" || v === "weekends" || v === "fulltime-short";
-}
-
-// Lee user_id de localStorage.auth_user (fallback a claims)
-function getUserIdFromLocalStorage(): string | undefined {
-  try {
-    const raw = localStorage.getItem("auth_user");
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw);
-    const id =
-      parsed?.user_data?.user_id ?? parsed?.user_id ?? parsed?.id ?? parsed?.uid;
-    return id != null ? String(id) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-// Lee tipo de cuenta / rol de localStorage.auth_user
-function getUserRoleFromLocalStorage(): string | undefined {
-  try {
-    const raw = localStorage.getItem("auth_user");
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw);
-    // típicamente "estudiante" o "empleador"
-    return (
-      parsed?.user_data?.tipo_cuenta ??
-      parsed?.tipo_cuenta ??
-      parsed?.role ??
-      parsed?.rol
-    );
-  } catch {
-    return undefined;
-  }
-}
-
-// Obtén token normalizado (por si lo guardaron con 'Bearer ')
-function getAuthToken(): string {
-  const raw = localStorage.getItem("auth_token") || "";
-  return raw.replace(/^Bearer\s+/i, "").trim();
 }
 
 // File → dataURL (e.g., "data:image/png;base64,AAAA...")
@@ -85,6 +48,7 @@ export default function WorkerPost({
   onFinish?: () => void;
 }) {
   const nav = useNavigate();
+  const { token: authToken, userData, isStudent, updateUserData } = useAuth();
   const { state, errors, setFotoPerfil, setState, setLink, validate } =
     useOnboarding();
   const [step, setStep] = useState(1);
@@ -96,7 +60,7 @@ export default function WorkerPost({
     () => state?.habilidades ?? []
   );
   const [availability, setAvailability] = useState<AvailabilityKey | "">(
-    state?.disponibilidad ?? ""
+    (state?.disponibilidad as AvailabilityKey | "") ?? ""
   );
 
   const [localErr, setLocalErr] = useState<{
@@ -104,31 +68,20 @@ export default function WorkerPost({
     disponibilidad?: string;
   }>({});
 
-  // Token + userId + rol
-  const token = typeof window !== "undefined" ? getAuthToken() : "";
-  const claims = decodeJWT(token);
-  const userIdLS =
-    typeof window !== "undefined" ? getUserIdFromLocalStorage() : undefined;
-  const roleLS =
-    typeof window !== "undefined" ? getUserRoleFromLocalStorage() : undefined;
-  const idClaim = claims?.user_id ?? claims?.sub ?? claims?.uid ?? claims?.id;
-  const roleClaim = claims?.role ?? claims?.tipo_cuenta ?? claims?.account_type;
   const userId =
-    userIdProp ?? userIdLS ?? (idClaim != null ? String(idClaim) : undefined);
-  const userRole = roleLS ?? roleClaim;
+    userIdProp ??
+    (userData?.user_id != null ? String(userData.user_id) : undefined);
 
-  // Si no hay token o no hay userId → login
-  // Si el rol no es "estudiante" → lo sacamos de este flujo
+  // Guardas: sesión requerida + sólo estudiantes
   useEffect(() => {
-    if (!token || !userId) {
+    if (!authToken || !userId) {
       nav("/login");
       return;
     }
-    if (userRole && userRole !== "estudiante") {
-      // Este onboarding es exclusivo para estudiantes
+    if (!isStudent) {
       nav("/");
     }
-  }, [token, userId, userRole, nav]);
+  }, [authToken, userId, isStudent, nav]);
 
   const fotoPreview = useMemo(
     () => (state.foto_perfil ? URL.createObjectURL(state.foto_perfil) : null),
@@ -151,12 +104,14 @@ export default function WorkerPost({
     setState((s) => ({ ...s, habilidades: nextTags })); // guarda en store
     setSkillsInput("");
   };
+
   const onSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addSkillFromInput();
     }
   };
+
   const removeSkill = (s: string) => {
     const nextTags = skillsTags.filter((x) => x !== s);
     setSkillsTags(nextTags);
@@ -181,9 +136,6 @@ export default function WorkerPost({
 
   /**
    * 🔒 Solo valida y avanza. NO llama a la API.
-   * - Paso 1: foto obligatoria
-   * - Paso 2: sectores + título + habilidades + disponibilidad
-   * - Paso 3: bio + al menos un link obligatorios
    */
   function validateAndNext(current: number) {
     const err = validate(current === 1); // en el paso 1 validamos foto obligatoria
@@ -220,7 +172,10 @@ export default function WorkerPost({
    * ✅ ÚNICO momento en que se llama a la API.
    */
   async function submitAll() {
-    if (!userId) return;
+    if (!userId || !authToken) {
+      nav("/login");
+      return;
+    }
 
     // Validación global antes de enviar
     const err = validate(true);
@@ -265,17 +220,16 @@ export default function WorkerPost({
         foto_base64 = commaIdx >= 0 ? dataURL.slice(commaIdx + 1) : dataURL;
       }
 
-      // 2) Perfil completo en un solo PATCH JSON (Content-Type: application/json)
+      // 2) Perfil completo en un solo PATCH JSON
       const linksArray = Object.values(state.links || {})
         .filter((v): v is string => typeof v === "string" && v.trim() !== "")
         .map((v) => v.trim());
 
       const payload = {
-        // Campos esperados por tu handler
         titulo_perfil: state.titulo_perfil,
         sector_preferencias: state.sector_preferencias, // []string
         habilidades: skillsTags, // []string
-        disponibilidad: availability ? AVAILABILITY_MAP[availability] : "", // string esperado por el back
+        disponibilidad: availability ? AVAILABILITY_MAP[availability] : "",
         biografia: state.biografia,
         links: linksArray, // []string
         perfil_completo:
@@ -286,36 +240,26 @@ export default function WorkerPost({
           !!state.biografia &&
           linksArray.length > 0,
 
-        // 📸 Extras para la foto (el back los puede leer opcionalmente)
-        foto_perfil_base64: foto_base64, // solo la parte base64 (sin el prefijo data:)
-        foto_perfil_mime: foto_mime, // ej. "image/png"
-        foto_perfil_data_url: foto_data_url, // opcional: dataURL completa
+        // 📸 Extras para la foto
+        foto_perfil_base64: foto_base64,
+        foto_perfil_mime: foto_mime,
+        foto_perfil_data_url: foto_data_url,
       };
 
       await fetch(`${API_BASE}/protected/completar-perfil`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify(payload),
       }).then(handleJson);
 
-      // ✅ Actualizar auth_user en localStorage con perfil_completo = true
-      try {
-        const raw = localStorage.getItem("auth_user");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const updated = {
-            ...parsed,
-            perfil_completo: true,
-            completed_onboarding: true,
-          };
-          localStorage.setItem("auth_user", JSON.stringify(updated));
-        }
-      } catch (e) {
-        console.error("No se pudo actualizar auth_user en localStorage", e);
-      }
+      // ✅ Actualizar contexto de auth
+      updateUserData({
+        perfil_completo: true,
+        completed_onboarding: true,
+      });
 
       // 3) Finalizar onboarding → dashboard de estudiante
       if (onFinish) onFinish();
@@ -326,7 +270,7 @@ export default function WorkerPost({
     }
   }
 
-  if (!token || !userId) {
+  if (!authToken || !userId) {
     return (
       <section className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center px-6">
