@@ -1,4 +1,4 @@
-// src/dashboards/students/components/FiltersBar.tsx
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 
 interface FiltersBarProps {
   dateFilter: string;
@@ -9,9 +9,12 @@ interface FiltersBarProps {
   onModeFilterChange: (value: string | null) => void;
 }
 
-const dateOptions = ["Todos", "Hoy", "Este fin de semana"];
-const categoryOptions = ["Eventos", "Logística", "Tutorías", "Otros"];
+const dateOptions = ["Hoy", "Este fin de semana", "Todos"];
+const quickCategoryOptions = ["Eventos", "Tutorías"];
 const modeOptions = ["Presencial", "Remoto"];
+
+const basePill =
+  "inline-flex items-center gap-1 rounded-full border text-xs px-3 py-1 transition";
 
 export const FiltersBar = ({
   dateFilter,
@@ -21,60 +24,93 @@ export const FiltersBar = ({
   modeFilter,
   onModeFilterChange,
 }: FiltersBarProps) => {
-  return (
-    <div className="flex flex-col gap-3 mb-4">
-      <div className="flex flex-wrap gap-2">
-        <span className="text-xs text-slate-400 mr-1">Fecha:</span>
-        {dateOptions.map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onDateFilterChange(opt)}
-            className={`text-xs rounded-full px-3 py-1 border transition ${
-              dateFilter === opt
-                ? "bg-sky-500 text-white border-sky-500"
-                : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800"
-            }`}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
+  const handleDateClick = (opt: string) => {
+    onDateFilterChange(opt);
+  };
 
-      <div className="flex flex-wrap gap-2">
-        <span className="text-xs text-slate-400 mr-1">Categoría:</span>
-        {categoryOptions.map((opt) => {
-          const isActive = categoryFilter === opt;
+  const handleCategoryQuick = (opt: string) => {
+    const isActive = categoryFilter === opt;
+    onCategoryFilterChange(isActive ? null : opt);
+  };
+
+  const handleModeClick = (opt: string) => {
+    const isActive = modeFilter === opt;
+    onModeFilterChange(isActive ? null : opt);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Fecha */}
+        {dateOptions.map((opt) => {
+          const isActive = dateFilter === opt;
           return (
             <button
               key={opt}
               type="button"
-              onClick={() => onCategoryFilterChange(isActive ? null : opt)}
-              className={`text-xs rounded-full px-3 py-1 border transition ${
+              onClick={() => handleDateClick(opt)}
+              className={`${basePill} ${
                 isActive
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800"
+                  ? "bg-primary text-white border-primary shadow-sm"
+                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               {opt}
             </button>
           );
         })}
-      </div>
 
-      <div className="flex flex-wrap gap-2">
-        <span className="text-xs text-slate-400 mr-1">Modalidad:</span>
+        <span className="hidden h-5 w-px bg-slate-200 sm:block" />
+
+        {/* Categorías: pill general + atajos */}
+        <button
+          type="button"
+          onClick={() => onCategoryFilterChange(null)}
+          className={`${basePill} bg-white border-slate-200 text-slate-600 hover:bg-slate-50`}
+        >
+          <span>Categorías</span>
+          <ChevronDown className="h-3 w-3" />
+        </button>
+
+        {quickCategoryOptions.map((opt) => {
+          const isActive = categoryFilter === opt;
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => handleCategoryQuick(opt)}
+              className={`${basePill} ${
+                isActive
+                  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+
+        {/* Modalidad */}
+        <button
+          type="button"
+          onClick={() => onModeFilterChange(null)}
+          className={`${basePill} bg-white border-slate-200 text-slate-600 hover:bg-slate-50`}
+        >
+          <span>Modalidad</span>
+          <ChevronDown className="h-3 w-3" />
+        </button>
+
         {modeOptions.map((opt) => {
           const isActive = modeFilter === opt;
           return (
             <button
               key={opt}
               type="button"
-              onClick={() => onModeFilterChange(isActive ? null : opt)}
-              className={`text-xs rounded-full px-3 py-1 border transition ${
+              onClick={() => handleModeClick(opt)}
+              className={`${basePill} ${
                 isActive
-                  ? "bg-violet-500 text-white border-violet-500"
-                  : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800"
+                  ? "bg-violet-500 text-white border-violet-500 shadow-sm"
+                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               {opt}
@@ -82,6 +118,15 @@ export const FiltersBar = ({
           );
         })}
       </div>
+
+      {/* Botón "Todos los filtros" con ícono */}
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        <span>Todos los filtros</span>
+      </button>
     </div>
   );
 };

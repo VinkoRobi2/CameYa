@@ -1,4 +1,3 @@
-// src/App.tsx
 import { Routes, Route } from "react-router-dom";
 import EmailCheck from "./pages/auth/EmailCheck";
 import VerifyEmail from "./pages/auth/VerifyEmail";
@@ -77,10 +76,23 @@ export default function App() {
       {/* Dashboard estudiante (ruta principal) */}
       <Route
         path="/student/dashboard"
-        element={
+        element=
+        {
           <Protected>
             <OnboardingGate>
               <StudentDashboard />
+            </OnboardingGate>
+          </Protected>
+        }
+      />
+
+      {/* Dashboard empleador (por ahora usando EmployerPost como placeholder) */}
+      <Route
+        path="/employer/dashboard"
+        element={
+          <Protected>
+            <OnboardingGate>
+              <EmployerPost />
             </OnboardingGate>
           </Protected>
         }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { DashboardShell } from "../common/components/DashboardShell";
 import { StudentSidebar, type StudentTab } from "./components/StudentSidebar";
 import StudentHome from "./pages/StudentHome";
+import StudentProfilePage from "./pages/StudentProfile"; // 👈 IMPORTA EL DEFAULT
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState<StudentTab>("explorar");
@@ -24,9 +25,8 @@ export default function StudentDashboard() {
         </div>
       )}
       {activeTab === "perfil" && (
-        <div className="text-sm text-foreground-light/70 dark:text-foreground-dark/70">
-          Aquí podrás ver y editar tu perfil público.
-        </div>
+        // 👇 AHORA SÍ SE MONTA EL COMPONENTE QUE HACE EL AXIOS
+        <StudentProfilePage />
       )}
     </DashboardShell>
   );

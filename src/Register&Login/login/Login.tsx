@@ -1,4 +1,3 @@
-// src/Register&Login/login/Login.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Input from "../components/Input";
@@ -90,19 +89,21 @@ export default function Login() {
 
       // Fallback a user_data del backend
       const ud = data?.user_data ?? {};
-      const emailVerificado =
-        (claims?.email_verificado as boolean | undefined) ??
-        (claims as any)?.emailVerified ??
-        ud?.email_verificado ??
-        false;
 
-      // 👇 Considera también perfil_completo
-      const completedOnboarding =
-        (claims?.completed_onboarding as boolean | undefined) ??
-        (claims as any)?.perfil_completo ??
-        ud?.completed_onboarding ??
-        (ud as any)?.perfil_completo ??
-        false;
+      // ✅ Email verificado: si CUALQUIERA dice true
+      const emailVerificado = !!(
+        (claims?.email_verificado as boolean | undefined) ||
+        (claims as any)?.emailVerified ||
+        ud?.email_verificado
+      );
+
+      // ✅ Onboarding completado: OR lógico entre claims y user_data
+      const completedOnboarding = !!(
+        (claims?.completed_onboarding as boolean | undefined) ||
+        (claims as any)?.perfil_completo ||
+        ud?.completed_onboarding ||
+        (ud as any)?.perfil_completo
+      );
 
       // Tipo de cuenta: usamos también claims.role como fallback
       const tipoCuenta =
@@ -110,6 +111,14 @@ export default function Login() {
         (claims?.role as string | undefined) ??
         (ud?.tipo_cuenta as string | undefined) ??
         "";
+
+      console.log("LOGIN DEBUG =>", {
+        claims,
+        user_data: ud,
+        emailVerificado,
+        completedOnboarding,
+        tipoCuenta,
+      });
 
       // 🔐 Email no verificado
       if (!emailVerificado) {
@@ -130,11 +139,11 @@ export default function Login() {
         return;
       }
 
-      // ✅ Todo listo → dashboard estudiante
+      // ✅ Todo listo → dashboard según rol
       if (tipoCuenta === "empleador") {
-        // De momento no tienes dashboard de empleador, los puedes mandar a la misma landing o a donde quieras
-        nav("/student/dashboard");
+        nav("/employer/dashboard");
       } else {
+        // estudiante / worker
         nav("/student/dashboard");
       }
     } catch (e: any) {
