@@ -1,4 +1,4 @@
-/* === WorkerRegister.tsx (actualizado con validaciones de cédula, edad y fecha) === */
+/* === WorkerRegister.tsx (registro worker → verificación de correo, Solución A) === */
 import { useMemo, useState } from "react";
 import axios from "axios";
 import { REGISTER_URL } from "../../global_helpers/api";
@@ -32,8 +32,11 @@ export default function WorkerRegister() {
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
       return age - 1 >= 18;
     }
     return age >= 18;
@@ -45,7 +48,7 @@ export default function WorkerRegister() {
     const date = new Date(dateString);
     const today = new Date();
     const maxYear = today.getFullYear() + 5; // No permite fechas 5+ años en el futuro
-    
+
     return date.getFullYear() <= maxYear;
   };
 
@@ -55,44 +58,62 @@ export default function WorkerRegister() {
     if (lastName.trim()) done++;
     if (cedula.trim() && cedula.length >= 10 && cedula.length <= 13) done++;
     if (telefono.trim()) done++;
-    if (fechaNacimiento && isAtLeast18(fechaNacimiento) && isValidDate(fechaNacimiento)) done++;
+    if (
+      fechaNacimiento &&
+      isAtLeast18(fechaNacimiento) &&
+      isValidDate(fechaNacimiento)
+    )
+      done++;
     if (email.trim() && espolRegex.test(email.trim())) done++;
     if (pwd && pwd.length >= 8) done++;
     if (carrera.trim()) done++;
     if (verify && agree) done++;
     return done;
-  }, [firstName, lastName, cedula, telefono, fechaNacimiento, email, pwd, carrera, verify, agree]);
+  }, [
+    firstName,
+    lastName,
+    cedula,
+    telefono,
+    fechaNacimiento,
+    email,
+    pwd,
+    carrera,
+    verify,
+    agree,
+  ]);
 
   const percent = Math.round((completedSteps / totalSteps) * 100);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err: Record<string, string> = {};
-    
+
     if (!firstName.trim()) err.firstName = "Ingresa tus nombres";
     if (!lastName.trim()) err.lastName = "Ingresa tus apellidos";
-    
+
     if (!cedula.trim()) err.cedula = "Ingresa tu cédula";
-    else if (cedula.length < 10 || cedula.length > 13) 
+    else if (cedula.length < 10 || cedula.length > 13)
       err.cedula = "La cédula debe tener entre 10 y 13 caracteres";
-    
+
     if (!telefono.trim()) err.telefono = "Ingresa tu teléfono";
-    
-    if (!fechaNacimiento) err.fechaNacimiento = "Selecciona tu fecha de nacimiento";
-    else if (!isValidDate(fechaNacimiento)) 
+
+    if (!fechaNacimiento)
+      err.fechaNacimiento = "Selecciona tu fecha de nacimiento";
+    else if (!isValidDate(fechaNacimiento))
       err.fechaNacimiento = "La fecha no puede ser tan lejana";
-    else if (!isAtLeast18(fechaNacimiento)) 
+    else if (!isAtLeast18(fechaNacimiento))
       err.fechaNacimiento = "Debes tener al menos 18 años";
-    
+
     if (!email.trim()) err.email = "Ingresa tu correo electrónico";
-    else if (!espolRegex.test(email.trim())) 
+    else if (!espolRegex.test(email.trim()))
       err.email = "Solo se admiten correos @espol.edu.ec por el momento";
-    
-    if (!pwd || pwd.length < 8) err.pwd = "La contraseña debe tener mínimo 8 caracteres";
+
+    if (!pwd || pwd.length < 8)
+      err.pwd = "La contraseña debe tener mínimo 8 caracteres";
     if (!carrera.trim()) err.carrera = "Ingresa tu carrera";
     if (!verify) err.verify = "Debes confirmar tu identidad";
     if (!agree) err.agree = "Debes aceptar los Términos y la Política";
-    
+
     setErrors(err);
     if (Object.keys(err).length) return;
 
@@ -113,8 +134,18 @@ export default function WorkerRegister() {
 
     try {
       setLoading(true);
+      // 🔹 Solución A:
+      // - Solo registramos
+      // - El backend envía el correo de verificación
+      // - NO iniciamos sesión aquí
       await axios.post(REGISTER_URL, payload);
-      navigate("/register/email-confirmation", { state: { email } });
+
+      // 🔹 Luego mandamos al usuario a la pantalla de
+      // "revisa tu correo" para verificar
+      navigate("/email-check", {
+        replace: true,
+        state: { email },
+      });
     } catch (error: any) {
       const msg =
         error?.response?.data?.message ||
@@ -131,7 +162,10 @@ export default function WorkerRegister() {
     <section className="min-h-[80vh] flex items-center justify-center py-16">
       <div className="w-full max-w-2xl px-6">
         <div className="mb-6">
-          <Link to="/register" className="text-sm text-primary font-semibold hover:underline">
+          <Link
+            to="/register"
+            className="text-sm text-primary font-semibold hover:underline"
+          >
             ← Volver
           </Link>
         </div>
@@ -191,7 +225,9 @@ export default function WorkerRegister() {
               label="Cédula"
               placeholder="0000000000"
               value={cedula}
-              onChange={(e) => setCedula(e.target.value.replace(/\D/g, "").slice(0, 13))}
+              onChange={(e) =>
+                setCedula(e.target.value.replace(/\D/g, "").slice(0, 13))
+              }
               error={errors.cedula}
               required
             />
@@ -241,7 +277,12 @@ export default function WorkerRegister() {
             error={errors.carrera}
             required
           />
-          <Input label="Universidad" value="ESPOL" onChange={() => {}} disabled />
+          <Input
+            label="Universidad"
+            value="ESPOL"
+            onChange={() => {}}
+            disabled
+          />
 
           {/* Aceptaciones */}
           <label className="flex items-start gap-3 text-sm">
@@ -252,11 +293,13 @@ export default function WorkerRegister() {
               onChange={(e) => setVerify(e.target.checked)}
             />
             <span>
-              Confirmo que mi información es verídica y entiendo que CameYa revisa perfiles para
-              evitar fraudes.
+              Confirmo que mi información es verídica y entiendo que CameYa
+              revisa perfiles para evitar fraudes.
             </span>
           </label>
-          {errors.verify && <p className="text-xs text-red-600 -mt-2">{errors.verify}</p>}
+          {errors.verify && (
+            <p className="text-xs text-red-600 -mt-2">{errors.verify}</p>
+          )}
 
           <label className="flex items-start gap-3 text-sm">
             <input
@@ -267,17 +310,25 @@ export default function WorkerRegister() {
             />
             <span>
               Acepto los{" "}
-              <a href="/terms" className="text-primary font-semibold hover:underline">
+              <a
+                href="/terms"
+                className="text-primary font-semibold hover:underline"
+              >
                 Términos
               </a>{" "}
               y la{" "}
-              <a href="/terms" className="text-primary font-semibold hover:underline">
+              <a
+                href="/terms"
+                className="text-primary font-semibold hover:underline"
+              >
                 Política de Privacidad
               </a>
               .
             </span>
           </label>
-          {errors.agree && <p className="text-xs text-red-600 -mt-2">{errors.agree}</p>}
+          {errors.agree && (
+            <p className="text-xs text-red-600 -mt-2">{errors.agree}</p>
+          )}
 
           <button
             type="submit"
@@ -291,3 +342,4 @@ export default function WorkerRegister() {
     </section>
   );
 }
+/* === End of WorkerRegister.tsx === */
