@@ -9,6 +9,7 @@ import LandingPage from "./landingPage/LandingPage";
 import RegisterChoice from "./auth/RegisterChoice";
 import StudentRegister from "./auth/StudentRegister";
 import StudentCheckEmail from "./auth/StudentCheckEmail";
+import VerifyEmail from "./auth/VerifyEmail";
 import StudentCompleteRegister from "./auth/StudentCompleteRegister";
 
 const App: React.FC = () => {
@@ -25,8 +26,14 @@ const App: React.FC = () => {
         element={<StudentCheckEmail />}
       />
 
-      {/* Link del mail: verifica y guarda TODO en un solo request */}
-      <Route path="/verify/:token" element={<StudentCompleteRegister />} />
+      {/* Link del mail: /verify?token=... */}
+      <Route path="/verify" element={<VerifyEmail />} />
+
+      {/* Paso siguiente: completar perfil (título, bio, links, etc.) */}
+      <Route
+        path="/register/student/complete"
+        element={<StudentCompleteRegister />}
+      />
 
       {/* Páginas globales */}
       <Route path="/terms-and-privacy" element={<TermsAndPriv />} />
