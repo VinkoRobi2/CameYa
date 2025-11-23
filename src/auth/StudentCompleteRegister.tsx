@@ -68,11 +68,22 @@ const StudentCompleteRegister: React.FC = () => {
     setMessage(null);
 
     try {
+      const token = localStorage.getItem("auth_token");
+
+      if (!token) {
+        setError("No se encontró tu sesión. Vuelve a iniciar sesión.");
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch(
         `${API_BASE_URL}/protected/completar-perfil`,
         {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          method: "PATCH", // cámbialo a "POST" si tu backend usa POST
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             ciudad: form.ciudad,
             sector_preferencias: form.sectorPreferencias,

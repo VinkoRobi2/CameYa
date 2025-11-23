@@ -9,8 +9,10 @@ import LandingPage from "./landingPage/LandingPage";
 import RegisterChoice from "./auth/RegisterChoice";
 import StudentRegister from "./auth/StudentRegister";
 import StudentCheckEmail from "./auth/StudentCheckEmail";
+import EmployerRegister from "./auth/EmployerRegister";
 import VerifyEmail from "./auth/VerifyEmail";
 import StudentCompleteRegister from "./auth/StudentCompleteRegister";
+import Login from "./auth/Login";
 
 const App: React.FC = () => {
   return (
@@ -18,22 +20,34 @@ const App: React.FC = () => {
       {/* Landing */}
       <Route path="/" element={<LandingPage />} />
 
-      {/* Registro estudiante (paso 1 + pantalla de correo) */}
+      {/* Elección de tipo de registro */}
       <Route path="/register" element={<RegisterChoice />} />
+
+      {/* Registro estudiante */}
       <Route path="/register/student" element={<StudentRegister />} />
       <Route
         path="/register/student/check-email"
         element={<StudentCheckEmail />}
       />
 
+      {/* Registro empleador (persona / empresa) */}
+      <Route path="/register/employer" element={<EmployerRegister />} />
+      <Route
+        path="/register/employer/check-email"
+        element={<StudentCheckEmail />}
+      />
+
       {/* Link del mail: /verify?token=... */}
       <Route path="/verify" element={<VerifyEmail />} />
 
-      {/* Paso siguiente: completar perfil (título, bio, links, etc.) */}
+      {/* Completar perfil estudiante (con token en localStorage) */}
       <Route
         path="/register/student/complete"
         element={<StudentCompleteRegister />}
       />
+
+      {/* Login común para estudiantes y empleadores */}
+      <Route path="/login" element={<Login />} />
 
       {/* Páginas globales */}
       <Route path="/terms-and-privacy" element={<TermsAndPriv />} />

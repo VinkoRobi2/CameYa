@@ -44,12 +44,12 @@ const VerifyEmail: React.FC = () => {
         setStatus("success");
         setMessage(
           (data && (data.message as string)) ||
-            "Correo verificado correctamente."
+            "Correo verificado correctamente. Ahora puedes iniciar sesión."
         );
 
-        // Tras unos segundos, llevar al paso 3 (completar info)
+        // Tras unos segundos, llevar al login
         setTimeout(() => {
-          navigate("/register/student/complete", { replace: true });
+          navigate("/login", { replace: true });
         }, 1500);
       } catch (err) {
         console.error(err);
@@ -87,9 +87,7 @@ const VerifyEmail: React.FC = () => {
               )}
 
               {status === "error" || status === "no-token" ? (
-                <button
-                  onClick={() => navigate("/register/student")}
-                >
+                <button onClick={() => navigate("/register")}>
                   Volver al registro
                 </button>
               ) : null}
