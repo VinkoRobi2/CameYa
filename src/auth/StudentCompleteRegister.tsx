@@ -31,7 +31,7 @@ const StudentCompleteRegister: React.FC = () => {
 
     try {
       // ⚠️ AJUSTA ESTE ENDPOINT Y PAYLOAD A TU HANDLER REAL
-      const res = await fetch(`${API_BASE_URL}/estudiantes/complete-profile`, {
+      const res = await fetch(`${API_BASE_URL}/completar-perfil`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
