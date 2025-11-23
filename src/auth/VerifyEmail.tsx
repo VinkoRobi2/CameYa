@@ -24,7 +24,10 @@ const VerifyEmail: React.FC = () => {
     const verify = async () => {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/verify?token=${encodeURIComponent(token)}`
+          `${API_BASE_URL}/verify/${encodeURIComponent(token)}`,
+          {
+            method: "POST",
+          }
         );
 
         const data = await res.json().catch(() => ({}));
@@ -86,7 +89,6 @@ const VerifyEmail: React.FC = () => {
               {status === "error" || status === "no-token" ? (
                 <button
                   onClick={() => navigate("/register/student")}
-                  className="mt-2 inline-flex items-center justify-center h-10 px-6 rounded-full bg-primary text-sm font-semibold hover:opacity-90"
                 >
                   Volver al registro
                 </button>
