@@ -47,34 +47,58 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Asumimos que el backend devuelve { token, user }
-      const token = (data as any).token || (data as any).access_token;
-      const user = (data as any).user || (data as any).data;
+      // Si el backend devuelve token y/o user, los usamos para poblar el storage,
+      // pero la validación principal se hace leyendo el token desde localStorage.
+      const tokenFromResponse = (data as any).token || (data as any).access_token;
+      const userFromResponse = (data as any).user || (data as any).data;
 
-      if (!token || !user) {
-        setError("Respuesta inesperada del servidor.");
+      if (tokenFromResponse) {
+        localStorage.setItem("auth_token", tokenFromResponse);
+      }
+
+      if (userFromResponse) {
+        localStorage.setItem("auth_user", JSON.stringify(userFromResponse));
+      }
+
+      // ✅ Aquí es donde mandas: depende solo del token en localStorage
+      const storedToken = localStorage.getItem("auth_token");
+      if (!storedToken) {
+        setError("No se encontró el token de autenticación.");
         return;
       }
 
-      // Guardar en localStorage
-      localStorage.setItem("auth_token", token);
-      localStorage.setItem("auth_user", JSON.stringify(user));
+      // Opcional: poblar el AuthContext con lo que haya de user en localStorage
+      let userForContext = userFromResponse;
+      if (!userForContext) {
+        const storedUser = localStorage.getItem("auth_user");
+        if (storedUser) {
+          try {
+            userForContext = JSON.parse(storedUser);
+          } catch {
+            // si falla el parseo, seguimos igual
+          }
+        }
+      }
 
-      // Normalizar para AuthContext
-      const normalizedUser = {
-        id: String(user.user_id ?? user.id ?? ""),
-        name:
-          user.nombre || user.apellido
-            ? `${user.nombre ?? ""} ${user.apellido ?? ""}`.trim()
-            : user.name ?? "",
-        email: user.email,
-        role:
-          user.role === "estudiante" || user.role === "empleador"
-            ? (user.role as "student" | "employer")
-            : null,
-      };
+      if (userForContext) {
+        const normalizedUser = {
+          id: String(userForContext.user_id ?? userForContext.id ?? ""),
+          name:
+            userForContext.nombre || userForContext.apellido
+              ? `${userForContext.nombre ?? ""} ${
+                  userForContext.apellido ?? ""
+                }`.trim()
+              : userForContext.name ?? "",
+          email: userForContext.email,
+          role:
+            userForContext.role === "estudiante" ||
+            userForContext.role === "empleador"
+              ? (userForContext.role as "student" | "employer")
+              : null,
+        };
 
-      login(normalizedUser);
+        login(normalizedUser);
+      }
 
       navigate("/", { replace: true });
     } catch (err) {
