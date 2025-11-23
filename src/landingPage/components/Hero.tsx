@@ -1,4 +1,4 @@
-import heroVideo from "../../assets/videos/students.mp4"
+import heroVideo from "../../assets/videos/students.mp4";
 import Reveal from "../../ui/Reveal";
 
 export default function Hero() {
