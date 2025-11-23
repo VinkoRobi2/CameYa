@@ -1,18 +1,23 @@
 // src/auth/StudentCompleteRegister.tsx
 import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
 import API_BASE_URL from "../global/ApiBase";
 
 const StudentCompleteRegister: React.FC = () => {
   const navigate = useNavigate();
-  const { token } = useParams<{ token: string }>();
 
   const [form, setForm] = useState({
     ciudad: "",
     ubicacion: "",
     nivelActual: "",
     disponibilidad: "",
+    // aquí puedes ir sumando más campos:
+    // sectorPreferencias: "",
+    // habilidadesBasicas: "",
+    // tituloPerfil: "",
+    // biografia: "",
+    // links: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -32,26 +37,27 @@ const StudentCompleteRegister: React.FC = () => {
     setError(null);
     setMessage(null);
 
-    if (!token) {
-      setLoading(false);
-      setError("Token de verificación no encontrado en la URL.");
-      return;
-    }
-
     try {
-      // Un solo request al endpoint de verificación
-      const res = await fetch(`${API_BASE_URL}/verify/${encodeURIComponent(token)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // Datos finales que quieras guardar al completar perfil
-          ciudad: form.ciudad,
-          ubicacion: form.ubicacion,
-          nivel_actual: form.nivelActual,
-          disponibilidad_de_tiempo: form.disponibilidad,
-          // Si decides enviar más campos al final, los agregas aquí
-        }),
-      });
+      // 🔹 Un solo request para completar el perfil del estudiante
+      // Ajusta la ruta al endpoint real que crees en tu backend
+      const res = await fetch(
+        `${API_BASE_URL}/estudiantes/complete-profile`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ciudad: form.ciudad,
+            ubicacion: form.ubicacion,
+            nivel_actual: form.nivelActual,
+            disponibilidad_de_tiempo: form.disponibilidad,
+            // sector_preferencias: form.sectorPreferencias,
+            // habilidades_basicas: form.habilidadesBasicas,
+            // titulo_de_perfil: form.tituloPerfil,
+            // biografia: form.biografia,
+            // links: form.links,
+          }),
+        }
+      );
 
       const data = await res.json().catch(() => ({}));
 
@@ -65,7 +71,7 @@ const StudentCompleteRegister: React.FC = () => {
 
       setMessage(
         (data && (data.message as string)) ||
-          "Registro completado. Ya puedes iniciar sesión."
+          "Perfil completado. Ya puedes iniciar sesión."
       );
 
       setTimeout(() => {
@@ -89,8 +95,8 @@ const StudentCompleteRegister: React.FC = () => {
                 Completa tu perfil
               </h1>
               <p className="text-sm text-gray-300 text-center mb-6">
-                Ya verificamos tu correo. Cuéntanos un poco más sobre ti para
-                mostrarte CameYos que encajen contigo.
+                Ya verificaste tu correo. Ahora completa estos datos para
+                poder mostrarte CameYos que encajen contigo.
               </p>
 
               {error && (
