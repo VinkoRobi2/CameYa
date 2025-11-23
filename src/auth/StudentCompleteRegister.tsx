@@ -70,7 +70,7 @@ const StudentCompleteRegister: React.FC = () => {
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/estudiantes/completar-perfil`,
+        `${API_BASE_URL}/completar-perfil`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
