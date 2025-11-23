@@ -1,3 +1,4 @@
+// src/global/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -38,6 +39,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = () => {
     setUser(null);
     setRole(null);
+    // 👇 importante: limpiar sesión persistida
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
   };
 
   const value: AuthContextValue = { user, role, setRole, login, logout };

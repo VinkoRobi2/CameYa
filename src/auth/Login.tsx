@@ -106,12 +106,13 @@ const Login: React.FC = () => {
         login(normalizedUser);
       }
 
-      // 🔁 Redirección según tipo y perfil_completo
+      // 🔁 Redirección según tipo, perfil_completo y tipo_identidad
       let redirectTo = "/";
 
       if (finalUser) {
         const tipoCuenta = finalUser.tipo_cuenta || finalUser.role;
         const perfilCompleto = finalUser.perfil_completo;
+        const tipoIdentidad = finalUser.tipo_identidad || finalUser.TipoIdentidad;
 
         const esEstudiante =
           tipoCuenta === "estudiante" || tipoCuenta === "student";
@@ -125,10 +126,23 @@ const Login: React.FC = () => {
           perfilCompleto === null ||
           typeof perfilCompleto === "undefined";
 
-        if (esEstudiante && estaIncompleto) {
-          redirectTo = "/register/student/complete";
-        } else if (esEmpleador && estaIncompleto) {
-          redirectTo = "/register/employer/complete";
+        if (esEstudiante) {
+          if (estaIncompleto) {
+            redirectTo = "/register/student/complete";
+          } else {
+            redirectTo = "/dashboard/student";
+          }
+        } else if (esEmpleador) {
+          if (estaIncompleto) {
+            redirectTo = "/register/employer/complete";
+          } else {
+            const isCompany =
+              typeof tipoIdentidad === "string" &&
+              tipoIdentidad.toLowerCase() === "empresa";
+            redirectTo = isCompany
+              ? "/dashboard/employer/company"
+              : "/dashboard/employer/person";
+          }
         }
       }
 

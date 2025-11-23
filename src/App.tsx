@@ -13,7 +13,13 @@ import EmployerRegister from "./auth/EmployerRegister";
 import VerifyEmail from "./auth/VerifyEmail";
 import StudentCompleteRegister from "./auth/StudentCompleteRegister";
 import Login from "./auth/Login";
-import EmployerCompleteRegister from "./auth/EmployerCompleteRegister"; // 👈 NUEVO
+import EmployerCompleteRegister from "./auth/EmployerCompleteRegister";
+
+import StudentDashboard from "./auth/StudentDashboard";
+import EmployerPersonDashboard from "./auth/EmployerPersonDashboard";
+import EmployerCompanyDashboard from "./auth/EmployerCompanyDashboard";
+
+import ProtectedRoute from "./auth/ProtectedRoute";
 
 const App: React.FC = () => {
   return (
@@ -48,6 +54,31 @@ const App: React.FC = () => {
       <Route
         path="/register/employer/complete"
         element={<EmployerCompleteRegister />}
+      />
+
+      {/* Dashboards protegidos */}
+      <Route
+        path="/dashboard/student"
+        element={
+          <ProtectedRoute allowedRoles={["student"]}>
+            <StudentDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/employer/person"
+        element=
+          {<ProtectedRoute allowedRoles={["employer"]}>
+            <EmployerPersonDashboard />
+          </ProtectedRoute>}
+      />
+      <Route
+        path="/dashboard/employer/company"
+        element={
+          <ProtectedRoute allowedRoles={["employer"]}>
+            <EmployerCompanyDashboard />
+          </ProtectedRoute>
+        }
       />
 
       {/* Link del mail: /verify?token=... */}
