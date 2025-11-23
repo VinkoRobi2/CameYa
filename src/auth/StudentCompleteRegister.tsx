@@ -1,11 +1,12 @@
 // src/auth/StudentCompleteRegister.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Reveal from "../ui/Reveal";
 import API_BASE_URL from "../global/ApiBase";
 
 const StudentCompleteRegister: React.FC = () => {
   const navigate = useNavigate();
+  const { token } = useParams<{ token: string }>();
 
   const [form, setForm] = useState({
     ciudad: "",
@@ -18,7 +19,9 @@ const StudentCompleteRegister: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -29,16 +32,24 @@ const StudentCompleteRegister: React.FC = () => {
     setError(null);
     setMessage(null);
 
+    if (!token) {
+      setLoading(false);
+      setError("Token de verificación no encontrado en la URL.");
+      return;
+    }
+
     try {
-      // ⚠️ AJUSTA ESTE ENDPOINT Y PAYLOAD A TU HANDLER REAL
-      const res = await fetch(`${API_BASE_URL}/completar-perfil`, {
+      // Un solo request al endpoint de verificación
+      const res = await fetch(`${API_BASE_URL}/verify/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // Datos finales que quieras guardar al completar perfil
           ciudad: form.ciudad,
           ubicacion: form.ubicacion,
           nivel_actual: form.nivelActual,
           disponibilidad_de_tiempo: form.disponibilidad,
+          // Si decides enviar más campos al final, los agregas aquí
         }),
       });
 
@@ -47,14 +58,14 @@ const StudentCompleteRegister: React.FC = () => {
       if (!res.ok) {
         setError(
           (data && (data.message as string)) ||
-            "No se pudo completar tu perfil."
+            "No se pudo completar tu registro."
         );
         return;
       }
 
       setMessage(
         (data && (data.message as string)) ||
-          "Perfil completado. Ya puedes iniciar sesión."
+          "Registro completado. Ya puedes iniciar sesión."
       );
 
       setTimeout(() => {
