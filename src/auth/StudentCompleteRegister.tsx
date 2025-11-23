@@ -61,13 +61,10 @@ const StudentCompleteRegister: React.FC = () => {
     if (step > 0) setStep((prev) => prev - 1);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // 🔒 Blindaje: si NO estamos en el último paso, NO mandamos nada
-    if (step < stepsTotal - 1) {
-      return;
-    }
+  // 👇 Ya NO recibe el evento del form, se llama solo desde el botón final
+  const handleSubmit = async () => {
+    // Si por alguna razón lo llaman antes del último paso, no hace nada
+    if (step < stepsTotal - 1) return;
 
     setLoading(true);
     setError(null);
@@ -83,7 +80,7 @@ const StudentCompleteRegister: React.FC = () => {
       }
 
       const res = await fetch(`${API_BASE_URL}/protected/completar-perfil`, {
-        method: "PATCH", // cámbialo a "POST" si tu backend usa POST
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -165,7 +162,8 @@ const StudentCompleteRegister: React.FC = () => {
                 </p>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              {/* 🔐 Ya NO tiene onSubmit, es solo un contenedor visual */}
+              <form className="space-y-6">
                 {/* SLIDE 1: Ciudad + sector preferencias */}
                 {step === 0 && (
                   <div className="space-y-4">
@@ -290,7 +288,7 @@ const StudentCompleteRegister: React.FC = () => {
                         onChange={handleChange}
                         placeholder="Ej. LinkedIn, portafolio, GitHub... separados por salto de línea o comas."
                         rows={2}
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+                        className="w-full rounded-xl bg-black/40 border border_white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
                       />
                     </div>
 
@@ -339,7 +337,8 @@ const StudentCompleteRegister: React.FC = () => {
                     </button>
                   ) : (
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={handleSubmit}
                       disabled={loading}
                       className="h-10 px-6 rounded-full bg-primary text-sm font-semibold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
