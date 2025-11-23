@@ -1,6 +1,6 @@
 import { Mail, Phone, MessageSquareText, MapPin, Globe, Instagram, Linkedin } from "lucide-react";
 import { motion } from "framer-motion";
-import BackNav from "../ui/BackNav";
+import BackNav from "../../ui/BackNav";
 
 type ContactItem = {
   label: string;

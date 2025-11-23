@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
-import BackNav from "../ui/BackNav";
-
+import BackNav from "../../ui/BackNav";
 export default function TermsAndPriv() {
   const updated = "10 de octubre de 2025"; // Actualiza esta fecha cuando cambien las políticas
 
