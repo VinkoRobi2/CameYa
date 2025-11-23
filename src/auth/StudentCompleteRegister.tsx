@@ -36,7 +36,6 @@ const StudentCompleteRegister: React.FC = () => {
 
   const handleNext = () => {
     setError(null);
-    // Validaciones mínimas por paso (puedes endurecerlas si quieres)
 
     if (step === 0) {
       if (!form.ciudad.trim()) {
@@ -63,14 +62,14 @@ const StudentCompleteRegister: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // solo se dispara con "Guardar y finalizar"
     setLoading(true);
     setError(null);
     setMessage(null);
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/completar-perfil`,
+        `${API_BASE_URL}/protected/completar-perfil`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
