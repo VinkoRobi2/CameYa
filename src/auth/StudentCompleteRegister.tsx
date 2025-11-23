@@ -72,7 +72,7 @@ const StudentCompleteRegister: React.FC = () => {
       const res = await fetch(
         `${API_BASE_URL}/completar-perfil`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ciudad: form.ciudad,
