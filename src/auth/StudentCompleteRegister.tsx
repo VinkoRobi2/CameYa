@@ -62,7 +62,13 @@ const StudentCompleteRegister: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // solo se dispara con "Guardar y finalizar"
+    e.preventDefault();
+
+    // 🔒 Blindaje: si NO estamos en el último paso, NO mandamos nada
+    if (step < stepsTotal - 1) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -76,25 +82,22 @@ const StudentCompleteRegister: React.FC = () => {
         return;
       }
 
-      const res = await fetch(
-        `${API_BASE_URL}/protected/completar-perfil`,
-        {
-          method: "PATCH", // cámbialo a "POST" si tu backend usa POST
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ciudad: form.ciudad,
-            sector_preferencias: form.sectorPreferencias,
-            habilidades_basicas: form.habilidadesBasicas,
-            titulo_de_perfil: form.tituloPerfil,
-            biografia: form.biografia,
-            links: form.links,
-            foto_perfil: form.fotoPerfil,
-          }),
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/protected/completar-perfil`, {
+        method: "PATCH", // cámbialo a "POST" si tu backend usa POST
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ciudad: form.ciudad,
+          sector_preferencias: form.sectorPreferencias,
+          habilidades_basicas: form.habilidadesBasicas,
+          titulo_de_perfil: form.tituloPerfil,
+          biografia: form.biografia,
+          links: form.links,
+          foto_perfil: form.fotoPerfil,
+        }),
+      });
 
       const data = await res.json().catch(() => ({}));
 
@@ -315,7 +318,7 @@ const StudentCompleteRegister: React.FC = () => {
                 )}
 
                 {/* Botones de navegación */}
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center justify_between pt-2">
                   <button
                     type="button"
                     onClick={handleBack}
