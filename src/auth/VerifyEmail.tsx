@@ -24,7 +24,7 @@ const VerifyEmail: React.FC = () => {
     const verify = async () => {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/verify-email?token=${encodeURIComponent(token)}`
+          `${API_BASE_URL}/verify?token=${encodeURIComponent(token)}`
         );
 
         const data = await res.json().catch(() => ({}));
