@@ -47,13 +47,6 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Tu backend responde:
-      // {
-      //   "token": "...",
-      //   "user_data": {
-      //      email, email_verificado, perfil_completo, tipo_cuenta, user_id...
-      //   }
-      // }
       const tokenFromResponse =
         (data as any).token ||
         (data as any).access_token ||
@@ -72,14 +65,12 @@ const Login: React.FC = () => {
         localStorage.setItem("auth_user", JSON.stringify(userFromResponse));
       }
 
-      // ✅ éxito depende solo del token en localStorage
       const storedToken = localStorage.getItem("auth_token");
       if (!storedToken) {
         setError("No se encontró el token de autenticación.");
         return;
       }
 
-      // Leer usuario desde localStorage (o desde la respuesta)
       let finalUser: any = null;
       const storedUserStr = localStorage.getItem("auth_user");
       if (storedUserStr) {
@@ -92,7 +83,6 @@ const Login: React.FC = () => {
         finalUser = userFromResponse;
       }
 
-      // Poblar AuthContext si hay usuario
       if (finalUser) {
         const tipoCuenta = finalUser.tipo_cuenta || finalUser.role;
 
@@ -116,9 +106,7 @@ const Login: React.FC = () => {
         login(normalizedUser);
       }
 
-      // 🔁 Redirección:
-      // Si es estudiante y perfil_completo es false → completar perfil
-      // Si no → landing
+      // 🔁 Redirección según tipo y perfil_completo
       let redirectTo = "/";
 
       if (finalUser) {
@@ -127,6 +115,8 @@ const Login: React.FC = () => {
 
         const esEstudiante =
           tipoCuenta === "estudiante" || tipoCuenta === "student";
+        const esEmpleador =
+          tipoCuenta === "empleador" || tipoCuenta === "employer";
 
         const estaIncompleto =
           perfilCompleto === false ||
@@ -137,6 +127,8 @@ const Login: React.FC = () => {
 
         if (esEstudiante && estaIncompleto) {
           redirectTo = "/register/student/complete";
+        } else if (esEmpleador && estaIncompleto) {
+          redirectTo = "/register/employer/complete";
         }
       }
 

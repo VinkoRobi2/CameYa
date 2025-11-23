@@ -61,9 +61,8 @@ const StudentCompleteRegister: React.FC = () => {
     if (step > 0) setStep((prev) => prev - 1);
   };
 
-  // 👇 Ya NO recibe el evento del form, se llama solo desde el botón final
+  // Se llama SOLO desde el botón "Guardar y finalizar"
   const handleSubmit = async () => {
-    // Si por alguna razón lo llaman antes del último paso, no hace nada
     if (step < stepsTotal - 1) return;
 
     setLoading(true);
@@ -79,21 +78,34 @@ const StudentCompleteRegister: React.FC = () => {
         return;
       }
 
+      // ---- Adaptar datos al formato que espera el backend ----
+      const parseList = (raw: string): string[] =>
+        raw
+          .split(/[,|\n]/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+
+      const sectorArray = parseList(form.sectorPreferencias); // []string
+      const habilidadesArray = parseList(form.habilidadesBasicas); // []string
+      const linksArray = parseList(form.links); // []string
+
+      const payload = {
+        titulo_perfil: form.tituloPerfil,        // string
+        sector_preferencias: sectorArray,        // []string
+        habilidades: habilidadesArray,           // []string
+        disponibilidad: "no_especificado",       // string requerido por backend
+        biografia: form.biografia,               // string
+        links: linksArray,                       // []string
+        perfil_completo: true,                   // bool
+      };
+
       const res = await fetch(`${API_BASE_URL}/protected/completar-perfil`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ciudad: form.ciudad,
-          sector_preferencias: form.sectorPreferencias,
-          habilidades_basicas: form.habilidadesBasicas,
-          titulo_de_perfil: form.tituloPerfil,
-          biografia: form.biografia,
-          links: form.links,
-          foto_perfil: form.fotoPerfil,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -108,11 +120,11 @@ const StudentCompleteRegister: React.FC = () => {
 
       setMessage(
         (data && (data.message as string)) ||
-          "Perfil completado. Ya puedes iniciar sesión."
+          "Perfil completado correctamente."
       );
 
       setTimeout(() => {
-        navigate("/login", { replace: true });
+        navigate("/", { replace: true });
       }, 1500);
     } catch (err) {
       console.error(err);
@@ -162,7 +174,7 @@ const StudentCompleteRegister: React.FC = () => {
                 </p>
               )}
 
-              {/* 🔐 Ya NO tiene onSubmit, es solo un contenedor visual */}
+              {/* Sin onSubmit: solo contenedor visual */}
               <form className="space-y-6">
                 {/* SLIDE 1: Ciudad + sector preferencias */}
                 {step === 0 && (
@@ -198,11 +210,11 @@ const StudentCompleteRegister: React.FC = () => {
                         type="text"
                         value={form.sectorPreferencias}
                         onChange={handleChange}
-                        placeholder="Ej. eventos, tecnología, atención al cliente..."
+                        placeholder="Ej. eventos, tecnología, atención al cliente... (separa por comas)"
                         className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
                       />
                       <p className="text-[11px] text-gray-400 mt-1">
-                        Puedes escribir palabras clave separadas por comas.
+                        Escribe palabras clave separadas por comas.
                       </p>
                     </div>
                   </div>
@@ -223,13 +235,12 @@ const StudentCompleteRegister: React.FC = () => {
                         name="habilidadesBasicas"
                         value={form.habilidadesBasicas}
                         onChange={handleChange}
-                        placeholder="Ej. manejo de Excel, atención al cliente, redes sociales, inglés intermedio..."
+                        placeholder="Ej. manejo de Excel, atención al cliente, redes sociales, inglés intermedio... (separa por comas o saltos de línea)"
                         rows={4}
                         className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
                       />
                       <p className="text-[11px] text-gray-400 mt-1">
-                        Piensa en habilidades que realmente podrías usar en un
-                        CameYo de fin de semana.
+                        Usa comas o saltos de línea para separar habilidades.
                       </p>
                     </div>
                   </div>
@@ -270,7 +281,7 @@ const StudentCompleteRegister: React.FC = () => {
                         onChange={handleChange}
                         placeholder="Cuenta brevemente quién eres, qué estudias y qué tipo de trabajos te interesa hacer."
                         rows={4}
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+                        className="w-full rounded-xl bg-black/40 border border_white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
                       />
                     </div>
 
@@ -286,9 +297,9 @@ const StudentCompleteRegister: React.FC = () => {
                         name="links"
                         value={form.links}
                         onChange={handleChange}
-                        placeholder="Ej. LinkedIn, portafolio, GitHub... separados por salto de línea o comas."
+                        placeholder="Ej. LinkedIn, portafolio, GitHub... (separa por comas o saltos de línea)"
                         rows={2}
-                        className="w-full rounded-xl bg-black/40 border border_white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
                       />
                     </div>
 
@@ -316,7 +327,7 @@ const StudentCompleteRegister: React.FC = () => {
                 )}
 
                 {/* Botones de navegación */}
-                <div className="flex items-center justify_between pt-2">
+                <div className="flex items-center justify-between pt-2">
                   <button
                     type="button"
                     onClick={handleBack}

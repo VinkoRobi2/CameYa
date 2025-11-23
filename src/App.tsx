@@ -13,6 +13,7 @@ import EmployerRegister from "./auth/EmployerRegister";
 import VerifyEmail from "./auth/VerifyEmail";
 import StudentCompleteRegister from "./auth/StudentCompleteRegister";
 import Login from "./auth/Login";
+import EmployerCompleteRegister from "./auth/EmployerCompleteRegister"; // 👈 NUEVO
 
 const App: React.FC = () => {
   return (
@@ -37,14 +38,20 @@ const App: React.FC = () => {
         element={<StudentCheckEmail />}
       />
 
-      {/* Link del mail: /verify?token=... */}
-      <Route path="/verify" element={<VerifyEmail />} />
-
-      {/* Completar perfil estudiante (con token en localStorage) */}
+      {/* Completar perfil estudiante */}
       <Route
         path="/register/student/complete"
         element={<StudentCompleteRegister />}
       />
+
+      {/* Completar perfil empleador */}
+      <Route
+        path="/register/employer/complete"
+        element={<EmployerCompleteRegister />}
+      />
+
+      {/* Link del mail: /verify?token=... */}
+      <Route path="/verify" element={<VerifyEmail />} />
 
       {/* Login común para estudiantes y empleadores */}
       <Route path="/login" element={<Login />} />
