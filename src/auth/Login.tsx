@@ -47,14 +47,22 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Intentamos sacar token y user de la respuesta,
-      // pero la validación final será leyendo el token desde localStorage.
+      // Tu backend responde:
+      // {
+      //   "token": "...",
+      //   "user_data": {
+      //      email, email_verificado, perfil_completo, tipo_cuenta, user_id...
+      //   }
+      // }
       const tokenFromResponse =
         (data as any).token ||
         (data as any).access_token ||
         (data as any).auth_token;
 
-      const userFromResponse = (data as any).user || (data as any).data;
+      const userFromResponse =
+        (data as any).user_data ||
+        (data as any).user ||
+        (data as any).data;
 
       if (tokenFromResponse) {
         localStorage.setItem("auth_token", tokenFromResponse);
@@ -64,28 +72,27 @@ const Login: React.FC = () => {
         localStorage.setItem("auth_user", JSON.stringify(userFromResponse));
       }
 
-      // ✅ Depende solo del token leído desde localStorage
+      // ✅ éxito depende solo del token en localStorage
       const storedToken = localStorage.getItem("auth_token");
       if (!storedToken) {
         setError("No se encontró el token de autenticación.");
         return;
       }
 
-      // Sacamos usuario de localStorage (o de la respuesta si no está guardado)
+      // Leer usuario desde localStorage (o desde la respuesta)
       let finalUser: any = null;
       const storedUserStr = localStorage.getItem("auth_user");
       if (storedUserStr) {
         try {
           finalUser = JSON.parse(storedUserStr);
         } catch {
-          // si falla, usamos el de la respuesta si existe
           finalUser = userFromResponse ?? null;
         }
       } else if (userFromResponse) {
         finalUser = userFromResponse;
       }
 
-      // Poblar AuthContext si tenemos user
+      // Poblar AuthContext si hay usuario
       if (finalUser) {
         const tipoCuenta = finalUser.tipo_cuenta || finalUser.role;
 
@@ -93,7 +100,9 @@ const Login: React.FC = () => {
           id: String(finalUser.user_id ?? finalUser.id ?? ""),
           name:
             finalUser.nombre || finalUser.apellido
-              ? `${finalUser.nombre ?? ""} ${finalUser.apellido ?? ""}`.trim()
+              ? `${finalUser.nombre ?? ""} ${
+                  finalUser.apellido ?? ""
+                }`.trim()
               : finalUser.name ?? "",
           email: finalUser.email,
           role:
@@ -107,7 +116,7 @@ const Login: React.FC = () => {
         login(normalizedUser);
       }
 
-      // 🔁 Lógica de redirección:
+      // 🔁 Redirección:
       // Si es estudiante y perfil_completo es false → completar perfil
       // Si no → landing
       let redirectTo = "/";
