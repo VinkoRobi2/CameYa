@@ -47,9 +47,13 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Si el backend devuelve token y/o user, los usamos para poblar el storage,
-      // pero la validación principal se hace leyendo el token desde localStorage.
-      const tokenFromResponse = (data as any).token || (data as any).access_token;
+      // Intentamos sacar token y user de la respuesta,
+      // pero la validación final será leyendo el token desde localStorage.
+      const tokenFromResponse =
+        (data as any).token ||
+        (data as any).access_token ||
+        (data as any).auth_token;
+
       const userFromResponse = (data as any).user || (data as any).data;
 
       if (tokenFromResponse) {
@@ -60,47 +64,74 @@ const Login: React.FC = () => {
         localStorage.setItem("auth_user", JSON.stringify(userFromResponse));
       }
 
-      // ✅ Aquí es donde mandas: depende solo del token en localStorage
+      // ✅ Depende solo del token leído desde localStorage
       const storedToken = localStorage.getItem("auth_token");
       if (!storedToken) {
         setError("No se encontró el token de autenticación.");
         return;
       }
 
-      // Opcional: poblar el AuthContext con lo que haya de user en localStorage
-      let userForContext = userFromResponse;
-      if (!userForContext) {
-        const storedUser = localStorage.getItem("auth_user");
-        if (storedUser) {
-          try {
-            userForContext = JSON.parse(storedUser);
-          } catch {
-            // si falla el parseo, seguimos igual
-          }
+      // Sacamos usuario de localStorage (o de la respuesta si no está guardado)
+      let finalUser: any = null;
+      const storedUserStr = localStorage.getItem("auth_user");
+      if (storedUserStr) {
+        try {
+          finalUser = JSON.parse(storedUserStr);
+        } catch {
+          // si falla, usamos el de la respuesta si existe
+          finalUser = userFromResponse ?? null;
         }
+      } else if (userFromResponse) {
+        finalUser = userFromResponse;
       }
 
-      if (userForContext) {
+      // Poblar AuthContext si tenemos user
+      if (finalUser) {
+        const tipoCuenta = finalUser.tipo_cuenta || finalUser.role;
+
         const normalizedUser = {
-          id: String(userForContext.user_id ?? userForContext.id ?? ""),
+          id: String(finalUser.user_id ?? finalUser.id ?? ""),
           name:
-            userForContext.nombre || userForContext.apellido
-              ? `${userForContext.nombre ?? ""} ${
-                  userForContext.apellido ?? ""
-                }`.trim()
-              : userForContext.name ?? "",
-          email: userForContext.email,
+            finalUser.nombre || finalUser.apellido
+              ? `${finalUser.nombre ?? ""} ${finalUser.apellido ?? ""}`.trim()
+              : finalUser.name ?? "",
+          email: finalUser.email,
           role:
-            userForContext.role === "estudiante" ||
-            userForContext.role === "empleador"
-              ? (userForContext.role as "student" | "employer")
+            tipoCuenta === "estudiante"
+              ? ("student" as const)
+              : tipoCuenta === "empleador"
+              ? ("employer" as const)
               : null,
         };
 
         login(normalizedUser);
       }
 
-      navigate("/", { replace: true });
+      // 🔁 Lógica de redirección:
+      // Si es estudiante y perfil_completo es false → completar perfil
+      // Si no → landing
+      let redirectTo = "/";
+
+      if (finalUser) {
+        const tipoCuenta = finalUser.tipo_cuenta || finalUser.role;
+        const perfilCompleto = finalUser.perfil_completo;
+
+        const esEstudiante =
+          tipoCuenta === "estudiante" || tipoCuenta === "student";
+
+        const estaIncompleto =
+          perfilCompleto === false ||
+          perfilCompleto === 0 ||
+          perfilCompleto === "false" ||
+          perfilCompleto === null ||
+          typeof perfilCompleto === "undefined";
+
+        if (esEstudiante && estaIncompleto) {
+          redirectTo = "/register/student/complete";
+        }
+      }
+
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       console.error(err);
       setError("Error de conexión. Intenta de nuevo.");
