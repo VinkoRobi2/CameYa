@@ -16,9 +16,12 @@ import Login from "./auth/Login";
 import EmployerCompleteRegister from "./auth/EmployerCompleteRegister";
 
 import StudentDashboardHome from "./auth/studentDashboard/StudentDashboardHome";
+import StudentProfile from "./auth/studentDashboard/StudentProfile";
+
 import EmployerPersonHome from "./auth/employerDashboard/EmployerPersonHome";
 import EmployerCompanyHome from "./auth/employerDashboard/EmployerCompanyHome";
 import EmployerCreateJob from "./auth/employerDashboard/EmployerCreateJob";
+import EmployerPosts from "./auth/employerDashboard/EmployerPosts";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 
@@ -57,7 +60,7 @@ const App: React.FC = () => {
         element={<EmployerCompleteRegister />}
       />
 
-      {/* Dashboards protegidos (homes) */}
+      {/* Dashboards protegidos (estudiante) */}
       <Route
         path="/dashboard/student"
         element={
@@ -66,6 +69,16 @@ const App: React.FC = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/dashboard/student/profile"
+        element={
+          <ProtectedRoute allowedRoles={["student"]}>
+            <StudentProfile />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Dashboards protegidos (empleador) */}
       <Route
         path="/dashboard/employer/person"
         element={
@@ -79,6 +92,24 @@ const App: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={["employer"]}>
             <EmployerCompanyHome />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Mis publicaciones (empleadores) */}
+      <Route
+        path="/dashboard/employer/person/posts"
+        element={
+          <ProtectedRoute allowedRoles={["employer"]}>
+            <EmployerPosts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/employer/company/posts"
+        element={
+          <ProtectedRoute allowedRoles={["employer"]}>
+            <EmployerPosts />
           </ProtectedRoute>
         }
       />

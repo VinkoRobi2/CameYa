@@ -1,33 +1,46 @@
-// src/auth/StudentDashboard.tsx
+// src/auth/studentDashboard/StudentDashboardHome.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../global/AuthContext";
 import API_BASE_URL from "../../global/ApiBase";
+import StudentSidebar from "./StudentSidebar";
 
-const StudentDashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+interface EmpleadorPublico {
+  id: number;
+  nombre: string;
+  apellido: string;
+  empresa: string;
+  ciudad: string;
+  sector_laboral: string[];
+  frase_corta: string;
+  foto_perfil: string;
+  whatsapp: string;
+  tipo_identidad: string;
+}
+
+interface ApiResponse {
+  page: number;
+  limit: number;
+  empleadores: EmpleadorPublico[];
+}
+
+// 🔁 Ajusta esta ruta si tu handler está montado con otro path
+const EMPLOYERS_ENDPOINT = `${API_BASE_URL}/protected/perfiles-publicos-empleadores`;
+
+const StudentDashboardHome: React.FC = () => {
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<any | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [empleadores, setEmpleadores] = useState<EmpleadorPublico[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(8);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar info de localStorage como fallback inicial
-  const storedUserStr =
-    typeof window !== "undefined" ? localStorage.getItem("auth_user") : null;
-
-  let localExtra: any = {};
-  if (storedUserStr) {
-    try {
-      localExtra = JSON.parse(storedUserStr);
-    } catch {
-      localExtra = {};
-    }
-  }
-
-  // Pequeño helper para limpiar strings tipo "{texto}" o "\"texto\""
-  const cleanItem = (raw: string): string =>
-    raw.replace(/^[{\s"]+/, "").replace(/[}"\s]+$/, "");
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -37,13 +50,13 @@ const StudentDashboard: React.FC = () => {
       return;
     }
 
-    const fetchProfile = async () => {
+    const fetchEmpleadores = async () => {
       try {
-        setLoadingProfile(true);
+        setLoading(true);
         setError(null);
 
         const res = await fetch(
-          `${API_BASE_URL}/protected/perfil-privado-estudiante`,
+          `${EMPLOYERS_ENDPOINT}?page=${page}&limit=${limit}`,
           {
             method: "GET",
             headers: {
@@ -52,7 +65,7 @@ const StudentDashboard: React.FC = () => {
           }
         );
 
-        const data = await res.json().catch(() => ({}));
+        const data: ApiResponse = await res.json().catch(() => ({} as any));
 
         if (res.status === 401) {
           logout();
@@ -62,300 +75,158 @@ const StudentDashboard: React.FC = () => {
 
         if (!res.ok) {
           setError(
-            (data && (data.message as string)) ||
-              "No se pudo cargar tu perfil."
+            (data as any).error ||
+              (data as any).message ||
+              "No se pudieron cargar los empleadores."
           );
           return;
         }
 
-        setProfile(data);
-
-        // Opcional: actualizar auth_user con lo nuevo
-        try {
-          const prevStr = localStorage.getItem("auth_user");
-          const prev = prevStr ? JSON.parse(prevStr) : {};
-          localStorage.setItem(
-            "auth_user",
-            JSON.stringify({ ...prev, ...data })
-          );
-        } catch {
-          // ignoramos
-        }
+        setEmpleadores(data.empleadores || []);
       } catch (err) {
         console.error(err);
         setError("Error de conexión. Intenta de nuevo.");
       } finally {
-        setLoadingProfile(false);
+        setLoading(false);
       }
     };
 
-    fetchProfile();
-  }, [logout, navigate]);
+    fetchEmpleadores();
+  }, [page, limit, logout, navigate]);
 
-  const data = profile || localExtra || {};
-
-  // ---------- Mapeo a UI usando las keys reales ----------
-
-  const displayName =
-    (data.nombre || data.apellido
-      ? `${data.nombre ?? ""} ${data.apellido ?? ""}`.trim()
-      : "") ||
-    user?.name ||
-    "Estudiante CameYa";
-
-  const subtitleParts: string[] = [];
-  if (data.titulo_perfil) subtitleParts.push(data.titulo_perfil);
-  if (data.carrera && data.universidad) {
-    subtitleParts.push(`${data.carrera} en ${data.universidad}`);
-  }
-  const subtitle =
-    subtitleParts.join(" · ") || "Estudiante universitario CameYa";
-
-  const bio =
-    data.biografia ||
-    data.bibiografia || // viene así del backend
-    "Aquí irá tu biografía completa. En cuanto se vaya enriqueciendo tu perfil, se mostrará aquí.";
-
-  const availability =
-    data.disponibilidad_de_tiempo ||
-    data.disponibilidad ||
-    "Solo fines de semana";
-
-  // habilidades_basicas puede venir como array de strings con llaves
-  const habilidadesRaw = data.habilidades_basicas ?? data.habilidades ?? [];
-  const habilidadesList: string[] = Array.isArray(habilidadesRaw)
-    ? habilidadesRaw
-        .flatMap((item: any) =>
-          String(item)
-            .split(/[,|\n]/)
-            .map((s) => cleanItem(s))
-        )
-        .filter((s: string) => s.length > 0)
-    : String(habilidadesRaw)
-        .split(/[,|\n]/)
-        .map((s: string) => cleanItem(s))
-        .filter((s: string) => s.length > 0);
-
-  // sectores_preferencias (si quieres mostrarlos también)
-  const sectoresRaw =
-    data.sectores_preferencias ?? data.sector_preferencias ?? [];
-  const sectoresList: string[] = Array.isArray(sectoresRaw)
-    ? sectoresRaw
-        .flatMap((item: any) =>
-          String(item)
-            .split(/[,|\n]/)
-            .map((s) => cleanItem(s))
-        )
-        .filter((s: string) => s.length > 0)
-    : [];
-
-  // links es array, pero viene con llaves también: "{link}"
-  const linksRaw = data.links;
-  const links: string[] = Array.isArray(linksRaw)
-    ? linksRaw
-        .map((l: any) => cleanItem(String(l)))
-        .filter((s: string) => s.length > 0)
-    : linksRaw
-    ? String(linksRaw)
-        .split(/[,|\n]/)
-        .map((s: string) => cleanItem(s))
-        .filter((s: string) => s.length > 0)
-    : [];
-
-  const initials = displayName
-    .split(" ")
-    .filter(Boolean)
-    .map((p: string) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/", { replace: true });
-  };
-
-  if (loadingProfile) {
-    return (
-      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center">
-        <p className="text-sm text-slate-600">Cargando tu perfil...</p>
-      </div>
-    );
-  }
+  const nextPage = () => setPage((p) => p + 1);
+  const prevPage = () => setPage((p) => (p > 1 ? p - 1 : 1));
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
-        <div className="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-            CY
-          </div>
-          <div>
-            <p className="text-sm font-semibold">CameYa</p>
-            <p className="text-xs text-slate-500">Para estudiantes</p>
-          </div>
-        </div>
+      <StudentSidebar onLogout={handleLogout} />
 
-        <nav className="flex-1 px-3 py-4 space-y-1 text-sm">
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 text-left">
-            Inicio
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 text-left">
-            Mis postulaciones
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 text-left">
-            Trabajos completados
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary font-medium text-left">
-            Mi perfil
-          </button>
-        </nav>
-
-        <div className="px-3 pb-4 pt-2 border-t border-slate-200 text-sm space-y-1">
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 text-left">
-            Configuración
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 text-left"
-          >
-            Cerrar sesión
-          </button>
-        </div>
-      </aside>
-
-      {/* Main */}
       <main className="flex-1 px-8 py-8 overflow-y-auto">
+        <header className="mb-6">
+          <h1 className="text-xl font-semibold">Buscar trabajos</h1>
+          <p className="text-sm text-slate-600">
+            Explora empleadores y CameYos potenciales para ti.
+          </p>
+        </header>
+
         {error && (
           <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
             {error}
           </div>
         )}
 
-        {/* Header de perfil */}
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold text-xl">
-              {initials || "ST"}
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold">{displayName}</h1>
-              <p className="text-sm text-slate-500">{subtitle}</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Esta es la info que verán los empleadores cuando revisen tu
-                perfil.
-              </p>
-            </div>
-          </div>
-
-          <button className="self-start md:self-auto px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-90">
-            Editar perfil
-          </button>
-        </section>
-
-        {/* Métricas placeholder */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-2xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 mb-1">Valoración general</p>
-            <p className="text-2xl font-semibold">4.8 ⭐</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 mb-1">Trabajos completados</p>
-            <p className="text-2xl font-semibold">0</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 mb-1">Estado</p>
-            <p className="text-sm font-medium text-emerald-600">
-              {data.email_verificado ? "Perfil verificado" : "Pendiente de verificación"}
+        {loading ? (
+          <p className="text-sm text-slate-600">Cargando oportunidades...</p>
+        ) : empleadores.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+            <p className="text-sm font-medium text-slate-700 mb-1">
+              Aún no hay CameYos disponibles.
+            </p>
+            <p className="text-xs text-slate-500">
+              Vuelve más tarde, pronto habrá empleadores publicando trabajos.
             </p>
           </div>
-        </section>
+        ) : (
+          <>
+            <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+              {empleadores.map((emp) => {
+                const isCompany =
+                  emp.tipo_identidad &&
+                  emp.tipo_identidad.toLowerCase() === "empresa";
 
-        {/* Sobre mí + disponibilidad */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 lg:col-span-2">
-            <h2 className="text-sm font-semibold mb-2">Sobre mí</h2>
-            <p className="text-sm text-slate-600 leading-relaxed">{bio}</p>
-          </div>
+                const displayName = isCompany
+                  ? emp.empresa || `${emp.nombre} ${emp.apellido}`.trim()
+                  : `${emp.nombre} ${emp.apellido}`.trim() || "Empleador CameYa";
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h2 className="text-sm font-semibold mb-2">Disponibilidad</h2>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
-                {availability}
-              </span>
+                const subtitle = isCompany
+                  ? "Empresa usuaria de CameYa"
+                  : "Empleador individual";
+
+                const initials =
+                  (displayName || "CY")
+                    .split(" ")
+                    .filter(Boolean)
+                    .map((p) => p[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase() || "CY";
+
+                const sectores =
+                  emp.sector_laboral && emp.sector_laboral.length > 0
+                    ? emp.sector_laboral.map((s) => s.trim()).filter(Boolean)
+                    : [];
+
+                return (
+                  <article
+                    key={emp.id}
+                    className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold text-sm">
+                        {initials}
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-semibold">
+                          {displayName}
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                          {subtitle} · {emp.ciudad || "Ciudad no especificada"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {emp.frase_corta && (
+                      <p className="text-xs text-slate-600">
+                        {emp.frase_corta}
+                      </p>
+                    )}
+
+                    {sectores.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {sectores.map((sec) => (
+                          <span
+                            key={sec}
+                            className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-[11px] font-medium"
+                          >
+                            {sec}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Solo detalles del post, sin medios de contacto */}
+                    <div className="mt-2 flex gap-2">
+                      <button className="px-3 py-1.5 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50">
+                        Ver detalles
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+
+            {/* Controles de paginación simples */}
+            <div className="flex justify-between items-center text-xs text-slate-600">
+              <button
+                onClick={prevPage}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-full border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+              >
+                ← Página anterior
+              </button>
+              <span>Página {page}</span>
+              <button
+                onClick={nextPage}
+                className="px-3 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50"
+              >
+                Siguiente página →
+              </button>
             </div>
-          </div>
-        </section>
-
-        {/* Habilidades + sectores + links */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h2 className="text-sm font-semibold mb-3">Habilidades</h2>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {habilidadesList.map((skill) => (
-                <span
-                  key={skill}
-                  className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-medium"
-                >
-                  {skill}
-                </span>
-              ))}
-              {habilidadesList.length === 0 && (
-                <p className="text-xs text-slate-500">
-                  Aquí aparecerán tus habilidades básicas.
-                </p>
-              )}
-            </div>
-
-            {sectoresList.length > 0 && (
-              <>
-                <h3 className="text-xs font-semibold mb-2">
-                  Sectores preferidos
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {sectoresList.map((sec) => (
-                    <span
-                      key={sec}
-                      className="px-3 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium"
-                    >
-                      {sec}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h2 className="text-sm font-semibold mb-3">
-              Enlaces profesionales
-            </h2>
-            <div className="space-y-1 text-sm">
-              {links.length === 0 && (
-                <p className="text-slate-500 text-xs">
-                  Aquí aparecerán tus enlaces (LinkedIn, portafolio, GitHub,
-                  etc.).
-                </p>
-              )}
-              {links.map((link) => (
-                <a
-                  key={link}
-                  href={link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block text-primary hover:underline break-all"
-                >
-                  {link}
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
+          </>
+        )}
       </main>
     </div>
   );
 };
 
-export default StudentDashboard;
+export default StudentDashboardHome;
