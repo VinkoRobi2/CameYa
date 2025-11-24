@@ -15,9 +15,10 @@ import StudentCompleteRegister from "./auth/StudentCompleteRegister";
 import Login from "./auth/Login";
 import EmployerCompleteRegister from "./auth/EmployerCompleteRegister";
 
-import StudentDashboard from "./auth/StudentDashboard";
-import EmployerPersonDashboard from "./auth/EmployerPersonDashboard";
-import EmployerCompanyDashboard from "./auth/EmployerCompanyDashboard";
+import StudentDashboardHome from "./auth/studentDashboard/StudentDashboardHome";
+import EmployerPersonHome from "./auth/employerDashboard/EmployerPersonHome";
+import EmployerCompanyHome from "./auth/employerDashboard/EmployerCompanyHome";
+import EmployerCreateJob from "./auth/employerDashboard/EmployerCreateJob";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 
@@ -37,7 +38,7 @@ const App: React.FC = () => {
         element={<StudentCheckEmail />}
       />
 
-      {/* Registro empleador (persona / empresa) */}
+      {/* Registro empleador */}
       <Route path="/register/employer" element={<EmployerRegister />} />
       <Route
         path="/register/employer/check-email"
@@ -56,27 +57,38 @@ const App: React.FC = () => {
         element={<EmployerCompleteRegister />}
       />
 
-      {/* Dashboards protegidos */}
+      {/* Dashboards protegidos (homes) */}
       <Route
         path="/dashboard/student"
         element={
           <ProtectedRoute allowedRoles={["student"]}>
-            <StudentDashboard />
+            <StudentDashboardHome />
           </ProtectedRoute>
         }
       />
       <Route
         path="/dashboard/employer/person"
-        element=
-          {<ProtectedRoute allowedRoles={["employer"]}>
-            <EmployerPersonDashboard />
-          </ProtectedRoute>}
+        element={
+          <ProtectedRoute allowedRoles={["employer"]}>
+            <EmployerPersonHome />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/dashboard/employer/company"
         element={
           <ProtectedRoute allowedRoles={["employer"]}>
-            <EmployerCompanyDashboard />
+            <EmployerCompanyHome />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Crear trabajo (empleadores) */}
+      <Route
+        path="/dashboard/employer/jobs/new"
+        element={
+          <ProtectedRoute allowedRoles={["employer"]}>
+            <EmployerCreateJob />
           </ProtectedRoute>
         }
       />
@@ -84,7 +96,7 @@ const App: React.FC = () => {
       {/* Link del mail: /verify?token=... */}
       <Route path="/verify" element={<VerifyEmail />} />
 
-      {/* Login común para estudiantes y empleadores */}
+      {/* Login común */}
       <Route path="/login" element={<Login />} />
 
       {/* Páginas globales */}

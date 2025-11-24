@@ -106,12 +106,11 @@ const Login: React.FC = () => {
         login(normalizedUser);
       }
 
-      // 🔁 Redirección según tipo, perfil_completo y tipo_identidad
+      // 🔁 Redirección sólo a los "home" de cada dashboard
       let redirectTo = "/";
 
       if (finalUser) {
         const tipoCuenta = finalUser.tipo_cuenta || finalUser.role;
-        const perfilCompleto = finalUser.perfil_completo;
         const tipoIdentidad = finalUser.tipo_identidad || finalUser.TipoIdentidad;
 
         const esEstudiante =
@@ -119,30 +118,15 @@ const Login: React.FC = () => {
         const esEmpleador =
           tipoCuenta === "empleador" || tipoCuenta === "employer";
 
-        const estaIncompleto =
-          perfilCompleto === false ||
-          perfilCompleto === 0 ||
-          perfilCompleto === "false" ||
-          perfilCompleto === null ||
-          typeof perfilCompleto === "undefined";
-
         if (esEstudiante) {
-          if (estaIncompleto) {
-            redirectTo = "/register/student/complete";
-          } else {
-            redirectTo = "/dashboard/student";
-          }
+          redirectTo = "/dashboard/student";
         } else if (esEmpleador) {
-          if (estaIncompleto) {
-            redirectTo = "/register/employer/complete";
-          } else {
-            const isCompany =
-              typeof tipoIdentidad === "string" &&
-              tipoIdentidad.toLowerCase() === "empresa";
-            redirectTo = isCompany
-              ? "/dashboard/employer/company"
-              : "/dashboard/employer/person";
-          }
+          const isCompany =
+            typeof tipoIdentidad === "string" &&
+            tipoIdentidad.toLowerCase() === "empresa";
+          redirectTo = isCompany
+            ? "/dashboard/employer/company"
+            : "/dashboard/employer/person";
         }
       }
 
