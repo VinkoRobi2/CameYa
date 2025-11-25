@@ -37,6 +37,11 @@ const EmployerStudentsHome: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Modal de perfil público
+  const [showModal, setShowModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] =
+    useState<PublicStudent | null>(null);
+
   // Leemos tipo_identidad para saber cómo mostrar el sidebar
   const storedUserStr = localStorage.getItem("auth_user");
   let mode: "person" | "company" = "person";
@@ -116,6 +121,25 @@ const EmployerStudentsHome: React.FC = () => {
   const nextPage = () => setPage((p) => p + 1);
   const prevPage = () => setPage((p) => (p > 1 ? p - 1 : 1));
 
+  // helper para limpiar { } y " que vienen en los strings
+  const normalizeList = (arr?: string[]) =>
+    (arr || [])
+      .map((s) => s.replace(/[{}"]/g, "").trim())
+      .filter((s) => s.length > 0);
+
+  // --- Modal: abrir / cerrar (sin llamadas extra al backend) ---
+  const openStudentModal = (st: PublicStudent) => {
+    setSelectedStudent(st);
+    setShowModal(true);
+  };
+
+  const closeStudentModal = () => {
+    setShowModal(false);
+    setSelectedStudent(null);
+  };
+
+  const profile = selectedStudent;
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex">
       <EmployerSidebar mode={mode} onLogout={handleLogout} />
@@ -148,10 +172,18 @@ const EmployerStudentsHome: React.FC = () => {
         ) : (
           <>
             <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-              {students.map((st, idx) => {
-                const fullName = `${st.nombre ?? ""} ${
-                  st.apellido ?? ""
-                }`.trim() || "Estudiante CameYa";
+              {students.map((s, idx) => {
+                const st = {
+                  ...s,
+                  sectores_preferencias: normalizeList(
+                    s.sectores_preferencias
+                  ),
+                  habilidades_basicas: normalizeList(s.habilidades_basicas),
+                };
+
+                const fullName =
+                  `${st.nombre ?? ""} ${st.apellido ?? ""}`.trim() ||
+                  "Estudiante CameYa";
 
                 const subtitleParts: string[] = [];
                 if (st.titulo_perfil) subtitleParts.push(st.titulo_perfil);
@@ -170,20 +202,8 @@ const EmployerStudentsHome: React.FC = () => {
                     .join("")
                     .toUpperCase() || "ST";
 
-                const sectores =
-                  st.sectores_preferencias && st.sectores_preferencias.length > 0
-                    ? st.sectores_preferencias
-                        .map((s) => s.trim())
-                        .filter((s) => s.length > 0)
-                    : [];
-
-                const habilidades =
-                  st.habilidades_basicas && st.habilidades_basicas.length > 0
-                    ? st.habilidades_basicas
-                        .map((s) => s.trim())
-                        .filter((s) => s.length > 0)
-                    : [];
-
+                const sectores = st.sectores_preferencias;
+                const habilidades = st.habilidades_basicas;
                 const disponibilidad =
                   st.disponibilidad_de_tiempo || "No especificado";
 
@@ -234,9 +254,12 @@ const EmployerStudentsHome: React.FC = () => {
                       <span className="font-medium">{disponibilidad}</span>
                     </p>
 
-                    {/* Solo detalles, sin datos de contacto directo */}
+                    {/* Detalles + modal de perfil público */}
                     <div className="mt-2 flex gap-2">
-                      <button className="px-3 py-1.5 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50">
+                      <button
+                        className="px-3 py-1.5 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50"
+                        onClick={() => openStudentModal(st)}
+                      >
                         Ver detalles
                       </button>
                     </div>
@@ -262,6 +285,136 @@ const EmployerStudentsHome: React.FC = () => {
               </button>
             </div>
           </>
+        )}
+
+        {/* MODAL PERFIL PÚBLICO ESTUDIANTE */}
+        {showModal && profile && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={closeStudentModal}
+          >
+            <div
+              className="bg-white rounded-3xl shadow-xl max-w-3xl w-[90%] max-h-[80vh] overflow-y-auto p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold text-sm overflow-hidden">
+                    {profile.foto_perfil ? (
+                      <img
+                        src={profile.foto_perfil}
+                        alt={`${profile.nombre} ${profile.apellido}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (profile.nombre || "ST")
+                        .split(" ")
+                        .filter(Boolean)
+                        .map((p) => p[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold">
+                      {`${profile.nombre ?? ""} ${
+                        profile.apellido ?? ""
+                      }`.trim() || "Estudiante CameYa"}
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      {profile.titulo_perfil ||
+                        "Estudiante universitario CameYa"}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {profile.carrera && profile.universidad
+                        ? `${profile.carrera} · ${profile.universidad}`
+                        : profile.carrera || profile.universidad}
+                      {profile.ciudad && ` · ${profile.ciudad}`}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeStudentModal}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <section className="mb-4">
+                <h3 className="text-sm font-semibold mb-1">Sobre el alumno</h3>
+                <p className="text-xs text-slate-700">
+                  {profile.titulo_perfil ||
+                    "Estudiante universitario en búsqueda de CameYos."}
+                </p>
+              </section>
+
+              {normalizeList(profile.sectores_preferencias).length > 0 && (
+                <section className="mb-4">
+                  <h3 className="text-sm font-semibold mb-1">
+                    Sectores de preferencia
+                  </h3>
+                  <div className="flex flex-wrap gap-2 text-[11px] text-slate-700">
+                    {normalizeList(profile.sectores_preferencias).map(
+                      (s, idx) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 rounded-full bg-sky-50 border border-sky-100"
+                        >
+                          {s}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {normalizeList(profile.habilidades_basicas).length > 0 && (
+                <section className="mb-4">
+                  <h3 className="text-sm font-semibold mb-1">
+                    Habilidades básicas
+                  </h3>
+                  <div className="flex flex-wrap gap-2 text-[11px] text-slate-700">
+                    {normalizeList(profile.habilidades_basicas).map(
+                      (h, idx) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 rounded-full bg-violet-50 border border-violet-100"
+                        >
+                          {h}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </section>
+              )}
+
+              <section className="mb-4">
+                <h3 className="text-sm font-semibold mb-1">Disponibilidad</h3>
+                <p className="text-xs text-slate-700">
+                  {profile.disponibilidad_de_tiempo || "No especificado"}
+                </p>
+              </section>
+
+              <section className="mb-2">
+                <h3 className="text-sm font-semibold mb-1">Contacto</h3>
+                <p className="text-xs text-slate-700">
+                  WhatsApp:{" "}
+                  {profile.whatsapp ? (
+                    <span className="font-semibold">{profile.whatsapp}</span>
+                  ) : (
+                    "No disponible"
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Usa este contacto solo cuando haya interés real en avanzar con
+                  un CameYo.
+                </p>
+              </section>
+            </div>
+          </div>
         )}
       </main>
     </div>
