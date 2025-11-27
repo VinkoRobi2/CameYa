@@ -17,6 +17,7 @@ import EmployerCompleteRegister from "./auth/EmployerCompleteRegister";
 
 import StudentDashboardHome from "./auth/studentDashboard/StudentDashboardHome";
 import StudentProfile from "./auth/studentDashboard/StudentProfile";
+import StudentApplications from "./auth/studentDashboard/StudentApplications";
 
 import EmployerStudentsHome from "./auth/employerDashboard/EmployerStudentsHome";
 import EmployerPersonHome from "./auth/employerDashboard/EmployerPersonHome";
@@ -64,7 +65,8 @@ const App: React.FC = () => {
       {/* Dashboards protegidos (estudiante) */}
       <Route
         path="/dashboard/student"
-        element={
+        element=
+        {
           <ProtectedRoute allowedRoles={["student"]}>
             <StudentDashboardHome />
           </ProtectedRoute>
@@ -75,6 +77,14 @@ const App: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={["student"]}>
             <StudentProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/student/applications"
+        element={
+          <ProtectedRoute allowedRoles={["student"]}>
+            <StudentApplications />
           </ProtectedRoute>
         }
       />

@@ -1,3 +1,4 @@
+// src/auth/employerDashboard/EmployerPosts.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../global/AuthContext";
@@ -11,30 +12,23 @@ interface Job {
   categoria: string;
   requisitos?: string;
   habilidades?: string;
-  salario: string; // viene como "50.00"
+  salario?: string; // ej: "50.00"
+  pago_estimado?: number; // fallback si viene calculado
   negociable: boolean;
   ciudad: string;
-  modalidad: string;
+  modalidad?: string;
   fecha_creacion?: string;
   estado?: string;
   postulacion_contratada_id?: number | null;
-
-  // compatibilidad con otros endpoints antiguos
-  pago_estimado?: number;
-  ubicacion?: string;
-  creado_en?: string;
-  creadoEn?: string;
-  created_at?: string;
 }
 
 interface JobApplication {
-  id: number; // postulacion_id
+  id: number;
   trabajo_id: number;
   estudiante_id: number;
-  carta_presentacion: string;
+  carta_presentacion?: string;
   estado: string;
   creado_en?: string;
-
   estudiante_nombre: string;
   estudiante_foto_url?: string;
   estudiante_habilidades?: string;
@@ -44,25 +38,37 @@ interface JobApplication {
 interface PublicStudentProfile {
   nombre: string;
   apellido: string;
-  titulo_perfil: string;
-  sectores_preferencias: string[];
-  ciudad: string;
-  carrera: string;
-  universidad: string;
-  habilidades_basicas: string[];
-  foto_perfil: string;
-  whatsapp: string;
-  disponibilidad_de_tiempo: string;
+  titulo_perfil?: string;
+  sectores_preferencias?: string[] | null;
+  ciudad?: string;
+  universidad?: string;
+  carrera?: string;
+  disponibilidad_de_tiempo?: string;
+  whatsapp?: string;
   email?: string;
-  links?: string[] | string;
+  links?: string | string[];
 }
 
-// ENDPOINTS
+type RatingTagKey =
+  | "responsable_puntual"
+  | "calidad_trabajo"
+  | "buena_comunicacion"
+  | "buena_actitud"
+  | "autonomo"
+  | "no_se_presento"
+  | "cancelo_ultima_hora"
+  | "falta_respeto"
+  | "no_termino_trabajo";
+
 const JOBS_ENDPOINT = `${API_BASE_URL}/protected/trabajos_creados`;
 const APPLICATIONS_ENDPOINT = `${API_BASE_URL}/protected/empleador/trabajo/postulaciones`;
 const REVIEW_APPLICATION_ENDPOINT = `${API_BASE_URL}/protected/aplicacion/review`;
 const PUBLIC_PROFILE_ENDPOINT = (id: number) =>
   `${API_BASE_URL}/protected/perfil-publico/${id}`;
+const RATE_STUDENT_ENDPOINT = `${API_BASE_URL}/protected/valorar-estudiante`;
+
+// 🔹 Endpoint alineado con EmpleadorCompletarHandler (completar.go)
+const EMPLOYER_COMPLETE_ENDPOINT = `${API_BASE_URL}/protected/completar/empleador`;
 
 const EmployerPosts: React.FC = () => {
   const { logout } = useAuth();
@@ -72,7 +78,6 @@ const EmployerPosts: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal postulaciones / contratado
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [appsLoading, setAppsLoading] = useState(false);
@@ -80,7 +85,7 @@ const EmployerPosts: React.FC = () => {
   const [appsActionMsg, setAppsActionMsg] = useState<string | null>(null);
   const [currentAppIndex, setCurrentAppIndex] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
-  const [isHiredView, setIsHiredView] = useState(false); // modo “contratado”
+  const [isHiredView, setIsHiredView] = useState(false);
 
   // Perfil público
   const [publicProfile, setPublicProfile] =
@@ -92,6 +97,32 @@ const EmployerPosts: React.FC = () => {
   const [rating, setRating] = useState<number | null>(null);
   const [ratingComment, setRatingComment] = useState("");
   const [ratingMessage, setRatingMessage] = useState<string | null>(null);
+  const [ratingTags, setRatingTags] = useState<Record<RatingTagKey, boolean>>({
+    responsable_puntual: false,
+    calidad_trabajo: false,
+    buena_comunicacion: false,
+    buena_actitud: false,
+    autonomo: false,
+    no_se_presento: false,
+    cancelo_ultima_hora: false,
+    falta_respeto: false,
+    no_termino_trabajo: false,
+  });
+  const [ratingLoading, setRatingLoading] = useState(false);
+
+  // 🔹 Estado de completado del lado del empleador
+  const [employerCompleted, setEmployerCompleted] = useState(false);
+  const [completeLoading, setCompleteLoading] = useState(false);
+  const [completeMessage, setCompleteMessage] = useState<string | null>(null);
+
+  const toggleRatingTag = (key: RatingTagKey) => {
+    setRatingTags((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const currentApp =
+    applications.length > 0 && currentAppIndex >= 0
+      ? applications[currentAppIndex]
+      : null;
 
   // persona / empresa para sidebar
   const storedUserStr = localStorage.getItem("auth_user");
@@ -116,6 +147,17 @@ const EmployerPosts: React.FC = () => {
     navigate("/", { replace: true });
   };
 
+  const formatDate = (iso?: string) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("es-EC", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   // Cargar trabajos
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -137,7 +179,7 @@ const EmployerPosts: React.FC = () => {
           },
         });
 
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({} as any));
 
         if (res.status === 401) {
           logout();
@@ -149,21 +191,16 @@ const EmployerPosts: React.FC = () => {
           setError(
             (data && (data.error as string)) ||
               (data && (data.message as string)) ||
-              "No se pudieron cargar tus publicaciones."
+              "No se pudieron cargar tus CameYos."
           );
           return;
         }
 
-        const rawJobs = Array.isArray(data)
-          ? data
-          : Array.isArray((data as any).jobs)
-          ? (data as any).jobs
-          : [];
-
-        setJobs(rawJobs as Job[]);
+        const jobsData = (data.jobs || data.data || []) as Job[];
+        setJobs(jobsData);
       } catch (err) {
         console.error(err);
-        setError("Error de conexión. Intenta de nuevo.");
+        setError("Error de conexión al cargar tus CameYos.");
       } finally {
         setLoading(false);
       }
@@ -172,26 +209,7 @@ const EmployerPosts: React.FC = () => {
     fetchJobs();
   }, [logout, navigate]);
 
-  const formatDate = (job: Job) => {
-    const raw =
-      job.fecha_creacion ||
-      job.creado_en ||
-      job.creadoEn ||
-      job.created_at ||
-      (job as any).creado;
-    if (!raw) return "";
-    const d = new Date(raw);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleString("es-EC", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Helper: cargar perfil público de un estudiante
+  // Perfil público estudiante contratado
   const fetchPublicProfile = async (studentId: number) => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -240,7 +258,6 @@ const EmployerPosts: React.FC = () => {
     }
   };
 
-  // -------- VER POSTULACIONES / CONTRATADO --------
   const openApplicationsModal = async (job: Job) => {
     setSelectedJob(job);
     setApplications([]);
@@ -250,9 +267,25 @@ const EmployerPosts: React.FC = () => {
     setPublicProfile(null);
     setProfileError(null);
     setProfileLoading(false);
+    setIsHiredView(false);
     setRating(null);
     setRatingComment("");
     setRatingMessage(null);
+    setRatingTags({
+      responsable_puntual: false,
+      calidad_trabajo: false,
+      buena_comunicacion: false,
+      buena_actitud: false,
+      autonomo: false,
+      no_se_presento: false,
+      cancelo_ultima_hora: false,
+      falta_respeto: false,
+      no_termino_trabajo: false,
+    });
+    setRatingLoading(false);
+    setEmployerCompleted(false);
+    setCompleteLoading(false);
+    setCompleteMessage(null);
 
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -298,7 +331,7 @@ const EmployerPosts: React.FC = () => {
 
       let mapped: JobApplication[] = postulaciones.map((p) => ({
         id: p.postulacion_id,
-        trabajo_id: job.id, // aseguramos que sea el job del modal
+        trabajo_id: job.id,
         estudiante_id: p.estudiante_id,
         carta_presentacion: p.carta_presentacion,
         estado: p.estado,
@@ -314,23 +347,25 @@ const EmployerPosts: React.FC = () => {
           (m) => m.id === job.postulacion_contratada_id
         );
         if (hired) {
-          mapped = [hired]; // solo se muestra el contratado
+          mapped = [hired];
           setIsHiredView(true);
-          // cargamos de una vez su perfil público
+          // Si ya viene como completado del backend, habilitamos rating directo
+          const estadoUpper = (hired.estado || "").toUpperCase();
+          const isCompleted =
+            estadoUpper === "COMPLETADA" ||
+            estadoUpper === "COMPLETADO" ||
+            estadoUpper === "FINALIZADA" ||
+            estadoUpper === "FINALIZADO";
+          setEmployerCompleted(isCompleted);
           fetchPublicProfile(hired.estudiante_id);
-        } else {
-          // si por alguna razón no se encuentra, caemos a vista normal
-          setIsHiredView(false);
         }
-      } else {
-        setIsHiredView(false);
       }
 
       setApplications(mapped);
       setCurrentAppIndex(0);
     } catch (err) {
       console.error(err);
-      setAppsError("Error de conexión. Intenta nuevamente.");
+      setAppsError("Error de conexión al cargar postulaciones.");
     } finally {
       setAppsLoading(false);
     }
@@ -350,10 +385,23 @@ const EmployerPosts: React.FC = () => {
     setRating(null);
     setRatingComment("");
     setRatingMessage(null);
+    setRatingTags({
+      responsable_puntual: false,
+      calidad_trabajo: false,
+      buena_comunicacion: false,
+      buena_actitud: false,
+      autonomo: false,
+      no_se_presento: false,
+      cancelo_ultima_hora: false,
+      falta_respeto: false,
+      no_termino_trabajo: false,
+    });
+    setRatingLoading(false);
+    setEmployerCompleted(false);
+    setCompleteLoading(false);
+    setCompleteMessage(null);
   };
 
-  const currentApp =
-    applications.length > 0 ? applications[currentAppIndex] : null;
   const canGoPrev = currentAppIndex > 0;
   const canGoNext = currentAppIndex < applications.length - 1;
 
@@ -377,7 +425,7 @@ const EmployerPosts: React.FC = () => {
     }
   };
 
-  // -------- ACEPTAR / RECHAZAR / PERFIL --------
+  // aceptar / rechazar
   const updateApplicationStateLocal = (id: number, newState: string) => {
     setApplications((prev) =>
       prev.map((app) => (app.id === id ? { ...app, estado: newState } : app))
@@ -408,10 +456,8 @@ const EmployerPosts: React.FC = () => {
       const payload = {
         postulacion_id: currentApp.id,
         trabajo_id: trabajoId,
-        accion, // "aceptar" | "rechazar"
+        accion,
       };
-
-      console.log("Review aplicación payload:", payload);
 
       const res = await fetch(REVIEW_APPLICATION_ENDPOINT, {
         method: "POST",
@@ -443,7 +489,7 @@ const EmployerPosts: React.FC = () => {
       updateApplicationStateLocal(currentApp.id, newState);
 
       if (accion === "aceptar") {
-        // Pasar a modo contratado: solo este estudiante, actualizar job local y cargar perfil
+        // pasar a modo contratado
         setIsHiredView(true);
         setApplications((prev) =>
           prev.filter((app) => app.id === currentApp.id)
@@ -456,7 +502,7 @@ const EmployerPosts: React.FC = () => {
         );
         fetchPublicProfile(currentApp.estudiante_id);
 
-        // Refrescar listado de jobs en memoria para que quede marcado como contratado
+        // refrescar listado de jobs
         setJobs((prev) =>
           prev.map((job) =>
             job.id === trabajoId
@@ -476,46 +522,162 @@ const EmployerPosts: React.FC = () => {
   const handleAcceptCurrent = () => reviewCurrentApplication("aceptar");
   const handleRejectCurrent = () => reviewCurrentApplication("rechazar");
 
-  const handleViewPublicProfile = async () => {
-    if (!currentApp) return;
-    fetchPublicProfile(currentApp.estudiante_id);
+  // 🔹 Empleador marca como completado (EmpleadorCompletarHandler)
+  const handleEmployerComplete = async () => {
+    if (!currentApp || !selectedJob) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      logout();
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    try {
+      setCompleteLoading(true);
+      setCompleteMessage(null);
+
+      const res = await fetch(EMPLOYER_COMPLETE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          postulacion_id: currentApp.id,
+          job_id: selectedJob.id, // 👈 coincide con completar.go
+        }),
+      });
+
+      const data = await res.json().catch(() => ({} as any));
+
+      if (res.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!res.ok) {
+        setCompleteMessage(
+          data.error ||
+            data.message ||
+            "No se pudo marcar como completado. Intenta de nuevo."
+        );
+        return;
+      }
+
+      setCompleteMessage(
+        "Has marcado este CameYo como completado. Ahora puedes valorar al estudiante."
+      );
+      setEmployerCompleted(true);
+
+      // Actualizar estado local a "completado"
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === currentApp.id ? { ...a, estado: "completado" } : a
+        )
+      );
+      setSelectedJob((prev) =>
+        prev ? { ...prev, estado: "completado" } : prev
+      );
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === selectedJob.id ? { ...j, estado: "completado" } : j
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      setCompleteMessage(
+        "Error de conexión al marcar como completado. Intenta nuevamente."
+      );
+    } finally {
+      setCompleteLoading(false);
+    }
   };
 
-  // -------- VALORAR ESTUDIANTE (solo front por ahora) --------
-  const handleSubmitRating = () => {
+  // ---- Enviar valoración al backend ----
+  const handleSubmitRating = async () => {
     if (!currentApp || !selectedJob) return;
+
     if (rating === null) {
       setRatingMessage("Selecciona una calificación antes de enviar.");
       return;
     }
 
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      logout();
+      navigate("/login", { replace: true });
+      return;
+    }
+
     const payload = {
-      estudiante_id: currentApp.estudiante_id,
-      trabajo_id: selectedJob.id,
+      estudiante_valorado_id: currentApp.estudiante_id,
+      job_id: selectedJob.id,
       rating,
-      comentario: ratingComment.trim() || null,
+      comentario: ratingComment.trim(),
+      ...ratingTags,
     };
 
-    console.log("Payload valoración estudiante (front):", payload);
-    setRatingMessage(
-      "Valoración preparada. Conéctala a tu endpoint en el backend cuando lo tengas listo."
-    );
+    try {
+      setRatingLoading(true);
+      setRatingMessage(null);
+
+      const res = await fetch(RATE_STUDENT_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({} as any));
+
+      if (res.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!res.ok) {
+        setRatingMessage(
+          data.error ||
+            data.message ||
+            "No se pudo guardar la valoración. Intenta de nuevo."
+        );
+        return;
+      }
+
+      setRatingMessage(
+        "Gracias por valorar al estudiante. Tu opinión ayuda a otros empleadores."
+      );
+    } catch (err) {
+      console.error(err);
+      setRatingMessage(
+        "Error de conexión al enviar la valoración. Intenta nuevamente."
+      );
+    } finally {
+      setRatingLoading(false);
+    }
   };
 
   // -------- RENDER --------
-  return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex">
-      <EmployerSidebar mode={mode} onLogout={handleLogout} />
 
-      <main className="flex-1 px-8 py-8 overflow-y-auto">
-        <header className="mb-6 flex items-center justify-between gap-4">
+  return (
+    <div className="min-h-screen flex bg-slate-50">
+      <EmployerSidebar mode={mode} onLogout={handleLogout} />
+      <main className="flex-1 px-4 md:px-8 py-6 md:py-8 overflow-x-hidden">
+        <header className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold">Mis publicaciones</h1>
-            <p className="text-sm text-slate-600">
-              Aquí ves todos los CameYos que has publicado como empleador.
+            <h1 className="text-lg md:text-xl font-semibold text-slate-900">
+              Mis CameYos publicados
+            </h1>
+            <p className="text-xs text-slate-500">
+              Revisa tus publicaciones, postulaciones y estudiantes
+              contratados.
             </p>
           </div>
-
           <button
             onClick={() => navigate("/dashboard/employer/jobs/new")}
             className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:opacity-90"
@@ -564,86 +726,70 @@ const EmployerPosts: React.FC = () => {
                 job.postulacion_contratada_id != null
                   ? "contratado"
                   : job.estado || "activo";
+
               const negociableText = job.negociable
                 ? "Pago negociable"
                 : "Pago fijo";
 
-              const location =
-                job.ciudad || job.ubicacion || "Ubicación no especificada";
-
               return (
                 <article
                   key={job.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col md:flex-row md:items-start md:justify-between gap-4"
+                  className="rounded-2xl bg-white border border-slate-200 px-4 py-4 md:px-5 md:py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="inline-flex px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[11px] font-medium">
-                        {job.categoria}
-                      </span>
-                      <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium">
-                        {estado === "activo"
-                          ? "Activo"
-                          : estado === "contratado"
-                          ? "Estudiante contratado"
-                          : estado}
-                      </span>
+                      <h2 className="text-sm font-semibold text-slate-900">
+                        {job.titulo}
+                      </h2>
+                      {estado === "contratado" && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                          Estudiante contratado
+                        </span>
+                      )}
                     </div>
-
-                    <h2 className="text-sm font-semibold mb-1">
-                      {job.titulo}
-                    </h2>
-
-                    <p className="text-xs text-slate-600 mb-2">
+                    <p className="text-[11px] text-slate-600 mb-1 line-clamp-2">
                       {job.descripcion}
                     </p>
-
-                    <p className="text-[11px] text-slate-500 mb-1">
-                      Ubicación:{" "}
-                      <span className="font-medium">{location}</span>
-                    </p>
-
-                    {job.requisitos && (
-                      <p className="text-[11px] text-slate-500 mb-1">
-                        Requisitos: {job.requisitos}
-                      </p>
-                    )}
-
-                    {job.habilidades && (
-                      <p className="text-[11px] text-slate-500">
-                        Habilidades: {job.habilidades}
-                      </p>
-                    )}
+                    <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
+                      <span className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+                        {job.categoria}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+                        {job.ciudad || "Ciudad no especificada"}
+                      </span>
+                      {job.modalidad && (
+                        <span className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+                          {job.modalidad}
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+                        {negociableText}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="w-full md:w-44 flex flex-col items-start md:items-end gap-2 text-right">
-                    <div>
-                      <p className="text-xs text-slate-500">Salario</p>
-                      <p className="text-base font-semibold">
+                  <div className="flex flex-col items-end gap-1 min-w-[140px]">
+                    <div className="text-right">
+                      <p className="text-[11px] text-slate-500">
+                        Pago estimado
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
                         {salarioLabel}
                       </p>
-                      <p className="text-[11px] text-slate-500">
-                        {negociableText}
+                    </div>
+                    {job.fecha_creacion && (
+                      <p className="text-[10px] text-slate-400">
+                        Publicado: {formatDate(job.fecha_creacion)}
                       </p>
-                    </div>
-
-                    <div className="text-[11px] text-slate-400">
-                      Publicado: {formatDate(job)}
-                    </div>
-
-                    <div className="flex gap-2 mt-1">
-                      <button
-                        className="px-3 py-1 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50"
-                        onClick={() => openApplicationsModal(job)}
-                      >
-                        {job.postulacion_contratada_id
-                          ? "Ver estudiante contratado"
-                          : "Ver postulaciones"}
-                      </button>
-                      <button className="px-3 py-1 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50">
-                        Editar
-                      </button>
-                    </div>
+                    )}
+                    <button
+                      onClick={() => openApplicationsModal(job)}
+                      className="mt-1 px-3 py-1 rounded-full bg-sky-600 text-white text-[11px] font-semibold hover:bg-sky-700"
+                    >
+                      {job.postulacion_contratada_id
+                        ? "Ver estudiante contratado"
+                        : "Ver postulaciones"}
+                    </button>
                   </div>
                 </article>
               );
@@ -668,44 +814,40 @@ const EmployerPosts: React.FC = () => {
                     {selectedJob.titulo}
                   </h2>
                   <p className="text-[11px] text-slate-500 mb-1">
-                    Categoria: {selectedJob.categoria}
+                    Categoría: {selectedJob.categoria}
                   </p>
                   <p className="text-[11px] text-slate-500 mb-1">
-                    Ubicación: {selectedJob.ciudad || selectedJob.ubicacion}
+                    Ubicación: {selectedJob.ciudad || "No especificada"}
                   </p>
-                  <p className="text-[11px] text-slate-500 mb-3">
-                    Publicado: {formatDate(selectedJob)}
-                  </p>
-
-                  {isHiredView ? (
-                    <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-                      Este CameYo ya tiene un estudiante aceptado. Aquí puedes
-                      ver sus datos de contacto y valorarlo.
-                    </p>
-                  ) : (
+                  {selectedJob.modalidad && (
                     <p className="text-[11px] text-slate-500 mb-1">
-                      Postulaciones recibidas:{" "}
-                      <span className="font-semibold">
-                        {applications.length}
-                      </span>
+                      Modalidad: {selectedJob.modalidad}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-500">
+                    Postulaciones: {applications.length}
+                  </p>
+                  {selectedJob.fecha_creacion && (
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Publicado el {formatDate(selectedJob.fecha_creacion)}
                     </p>
                   )}
                 </div>
 
-                {!isHiredView && applications.length > 0 && (
-                  <div className="mt-4 flex items-center justify-between text-[11px] text-slate-600">
+                {applications.length > 1 && !isHiredView && (
+                  <div className="mt-4 flex items-center gap-2 text-[11px]">
                     <button
-                      className="px-3 py-1 rounded-full border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100"
+                      className="px-2.5 py-1 rounded-full border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100"
                       disabled={!canGoPrev}
                       onClick={goPrev}
                     >
                       ← Anterior
                     </button>
-                    <span>
+                    <span className="text-slate-500">
                       {currentAppIndex + 1} de {applications.length}
                     </span>
                     <button
-                      className="px-3 py-1 rounded-full border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100"
+                      className="px-2.5 py-1 rounded-full border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100"
                       disabled={!canGoNext}
                       onClick={goNext}
                     >
@@ -725,8 +867,8 @@ const EmployerPosts: React.FC = () => {
               {/* Lado derecho */}
               <div className="flex-1 px-8 py-6 overflow-y-auto">
                 {appsLoading ? (
-                  <p className="text-xs text-slate-600">
-                    Cargando información...
+                  <p className="text-xs text-slate-500">
+                    Cargando postulaciones...
                   </p>
                 ) : appsError ? (
                   <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-[11px] text-red-700">
@@ -738,7 +880,7 @@ const EmployerPosts: React.FC = () => {
                   </div>
                 ) : isHiredView ? (
                   <>
-                    {/* Vista de estudiante contratado */}
+                    {/* Vista estudiante contratado */}
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden text-xs font-semibold text-slate-600">
@@ -757,230 +899,350 @@ const EmployerPosts: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">
+                          <p className="text-sm font-semibold text-slate-900">
                             {currentApp.estudiante_nombre}
                           </p>
                           {currentApp.estudiante_carrera && (
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[11px] text-slate-600">
                               {currentApp.estudiante_carrera}
                             </p>
                           )}
-                          <p className="text-[11px] text-emerald-700 font-medium">
+                          <p className="text-[10px] text-emerald-700 font-medium mt-0.5">
                             Estudiante contratado para este CameYo
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Datos de contacto */}
-                    <section className="mb-4 border border-emerald-100 bg-emerald-50 rounded-2xl px-4 py-3 text-[11px] text-emerald-900">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-semibold">
-                          Datos de contacto
-                        </h3>
-                        <button
-                          className="px-3 py-1.5 rounded-full border border-emerald-200 text-[11px] text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          onClick={handleViewPublicProfile}
-                          disabled={profileLoading}
-                        >
-                          {profileLoading
-                            ? "Actualizando perfil..."
-                            : "Actualizar perfil"}
-                        </button>
-                      </div>
-
-                      {profileError && (
-                        <div className="mb-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-[11px] text-red-700">
+                    {/* Datos de contacto y perfil */}
+                    <section className="mb-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                      <h3 className="text-xs font-semibold mb-2 text-slate-800">
+                        Datos de contacto
+                      </h3>
+                      {profileLoading ? (
+                        <p className="text-[11px] text-slate-500">
+                          Cargando información...
+                        </p>
+                      ) : profileError ? (
+                        <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-[11px] text-red-700">
                           {profileError}
                         </div>
-                      )}
-
-                      {publicProfile ? (
-                        <div className="space-y-1">
-                          <p className="font-semibold text-emerald-900">
+                      ) : publicProfile ? (
+                        <div className="space-y-1 text-[11px] text-slate-700">
+                          <p>
+                            <span className="font-medium">Nombre:</span>{" "}
                             {publicProfile.nombre} {publicProfile.apellido}
                           </p>
                           {publicProfile.titulo_perfil && (
-                            <p>{publicProfile.titulo_perfil}</p>
+                            <p>
+                              <span className="font-medium">
+                                Título de perfil:
+                              </span>{" "}
+                              {publicProfile.titulo_perfil}
+                            </p>
                           )}
-                          <p>
-                            <span className="font-medium">Universidad:</span>{" "}
-                            {publicProfile.universidad}
-                          </p>
-                          <p>
-                            <span className="font-medium">Carrera:</span>{" "}
-                            {publicProfile.carrera}
-                          </p>
-                          <p>
-                            <span className="font-medium">Ciudad:</span>{" "}
-                            {publicProfile.ciudad}
-                          </p>
-                          <p>
-                            <span className="font-medium">Disponibilidad:</span>{" "}
-                            {publicProfile.disponibilidad_de_tiempo}
-                          </p>
-                          <p>
-                            <span className="font-medium">WhatsApp:</span>{" "}
-                            {publicProfile.whatsapp}
-                          </p>
+                          {publicProfile.universidad && (
+                            <p>
+                              <span className="font-medium">Universidad:</span>{" "}
+                              {publicProfile.universidad}
+                            </p>
+                          )}
+                          {publicProfile.carrera && (
+                            <p>
+                              <span className="font-medium">Carrera:</span>{" "}
+                              {publicProfile.carrera}
+                            </p>
+                          )}
+                          {publicProfile.ciudad && (
+                            <p>
+                              <span className="font-medium">Ciudad:</span>{" "}
+                              {publicProfile.ciudad}
+                            </p>
+                          )}
+                          {publicProfile.disponibilidad_de_tiempo && (
+                            <p>
+                              <span className="font-medium">
+                                Disponibilidad:
+                              </span>{" "}
+                              {publicProfile.disponibilidad_de_tiempo}
+                            </p>
+                          )}
+                          {publicProfile.whatsapp && (
+                            <p>
+                              <span className="font-medium">WhatsApp:</span>{" "}
+                              {publicProfile.whatsapp}
+                            </p>
+                          )}
                           {publicProfile.email && (
                             <p>
                               <span className="font-medium">Email:</span>{" "}
                               {publicProfile.email}
                             </p>
                           )}
-        {publicProfile.links && (
-          <div className="mt-1">
-            <p className="font-medium mb-1">Links:</p>
-            <div className="flex flex-wrap gap-2">
-              {(() => {
-                const raw = publicProfile.links;
-                let linksArr: string[] = [];
+                          {publicProfile.links && (
+                            <div className="mt-1">
+                              <p className="font-medium mb-1">Links:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {(() => {
+                                  const raw = publicProfile.links;
+                                  let linksArr: string[] = [];
 
-                if (Array.isArray(raw)) {
-                  // ya viene como array
-                  linksArr = raw;
-                } else if (typeof raw === "string") {
-                  // viene como string tipo "{link1,link2}"
-                  const cleaned = raw.replace(/[{}]/g, ""); // quita llaves
-                  linksArr = cleaned
-                    .split(",")                // separa por coma
-                    .map((l) => l.trim())
-                    .filter(Boolean);
-                }
+                                  if (Array.isArray(raw)) {
+                                    linksArr = raw;
+                                  } else if (typeof raw === "string") {
+                                    const cleaned = raw.replace(/[{}]/g, "");
+                                    linksArr = cleaned
+                                      .split(",")
+                                      .map((l) => l.trim())
+                                      .filter(Boolean);
+                                  }
 
-                return linksArr.map((link, idx) => {
-                  const href = link.startsWith("http")
-                    ? link
-                    : `https://${link}`;
-
-                  return (
-                    <a
-                      key={idx}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 rounded-full bg-white border border-emerald-200 hover:bg-emerald-100"
-                    >
-                      {link}
-                    </a>
-                  );
-                });
-              })()}
-            </div>
-          </div>
-        )}
+                                  return linksArr.map((link, idx) => {
+                                    const href = link.startsWith("http")
+                                      ? link
+                                      : `https://${link}`;
+                                    return (
+                                      <a
+                                        key={idx}
+                                        href={href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-3 py-1 rounded-full bg-white border border-emerald-200 hover:bg-emerald-100 text-[11px]"
+                                      >
+                                        {link}
+                                      </a>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <p className="text-[11px]">
+                        <p className="text-[11px] text-slate-600">
                           Para ver los datos completos de contacto, pulsa
                           “Actualizar perfil”. Se cargará la información
                           pública del estudiante.
                         </p>
                       )}
-                    </section>
 
-                    {/* Bloque de valoración */}
-                    <section className="mb-4 border-t border-slate-100 pt-3 mt-2">
-                      <h3 className="text-sm font-semibold mb-2">
-                        Valorar al estudiante
-                      </h3>
-
-                      <p className="text-[11px] text-slate-600 mb-2">
-                        Una vez terminado el CameYo, deja una valoración para
-                        ayudar a otros empleadores a conocer su desempeño.
-                      </p>
-
-                      <div className="flex items-center gap-1 mb-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setRating(star)}
-                            className={`w-7 h-7 rounded-full border text-xs font-semibold ${
-                              rating !== null && rating >= star
-                                ? "bg-amber-400 border-amber-400 text-white"
-                                : "bg-white border-slate-200 text-slate-600"
-                            }`}
-                          >
-                            {star}
-                          </button>
-                        ))}
-                        <span className="text-[11px] text-slate-500 ml-2">
-                          {rating
-                            ? `Calificación: ${rating}/5`
-                            : "Selecciona una calificación"}
-                        </span>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            fetchPublicProfile(currentApp.estudiante_id)
+                          }
+                          className="px-3 py-1 rounded-full border border-sky-500 text-[11px] text-sky-700 font-semibold hover:bg-sky-50"
+                        >
+                          Actualizar perfil
+                        </button>
                       </div>
-
-                      <textarea
-                        className="w-full rounded-2xl border border-slate-200 text-[11px] px-3 py-2 mb-2 resize-none focus:outline-none focus:ring-1 focus:ring-sky-500"
-                        rows={3}
-                        placeholder="Comentario opcional sobre el desempeño del estudiante..."
-                        value={ratingComment}
-                        onChange={(e) => setRatingComment(e.target.value)}
-                      />
-
-                      {ratingMessage && (
-                        <div className="mb-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-700">
-                          {ratingMessage}
-                        </div>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={handleSubmitRating}
-                        className="px-4 py-1.5 rounded-full bg-sky-600 text-white text-[11px] font-semibold hover:bg-sky-700"
-                      >
-                        Guardar valoración (solo front)
-                      </button>
                     </section>
-                  </>
-                ) : (
-                  // -------- Vista normal de postulaciones (antes de contratar) --------
-                  <>
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden text-xs font-semibold text-slate-600">
-                          {currentApp.estudiante_foto_url ? (
-                            <img
-                              src={currentApp.estudiante_foto_url}
-                              alt={currentApp.estudiante_nombre}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            currentApp.estudiante_nombre
-                              .split(" ")
-                              .map((p) => p[0])
-                              .join("")
-                              .slice(0, 2)
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold">
-                            {currentApp.estudiante_nombre}
+
+                    {/* Marcar como completado + mensaje */}
+                    <section className="mb-4 border-t border-slate-100 pt-3 mt-2">
+                      <h3 className="text-sm font-semibold mb-1">
+                        Estado del CameYo
+                      </h3>
+                      {!employerCompleted ? (
+                        <>
+                          <p className="text-[11px] text-slate-600 mb-2">
+                            Cuando el trabajo realmente haya terminado, marca
+                            aquí como completado. Luego podrás dejar una
+                            valoración sobre el estudiante.
                           </p>
-                          {currentApp.estudiante_carrera && (
-                            <p className="text-[11px] text-slate-500">
-                              {currentApp.estudiante_carrera}
+                          {completeMessage && (
+                            <div className="mb-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-700">
+                              {completeMessage}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleEmployerComplete}
+                            disabled={completeLoading}
+                            className="px-4 py-1.5 rounded-full bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {completeLoading
+                              ? "Marcando..."
+                              : "Marcar como completado"}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {completeMessage && (
+                            <div className="mb-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-700">
+                              {completeMessage}
+                            </div>
+                          )}
+                          {!completeMessage && (
+                            <p className="text-[11px] text-emerald-700 mb-1">
+                              Ya marcaste este CameYo como completado.
                             </p>
                           )}
-                          <p className="text-[11px] text-slate-500">
-                            Postulación #{currentApp.id} ·{" "}
-                            {currentApp.estado}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <section className="mb-4">
-                      <h3 className="text-sm font-semibold mb-1">
-                        Carta de presentación
-                      </h3>
-                      <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">
-                        {currentApp.carta_presentacion}
-                      </p>
+                        </>
+                      )}
                     </section>
+
+                    {/* Bloque de valoración (solo cuando employerCompleted === true) */}
+                    {employerCompleted ? (
+                      <section className="mb-4 border-t border-slate-100 pt-3 mt-2">
+                        <h3 className="text-sm font-semibold mb-2">
+                          Valorar al estudiante
+                        </h3>
+
+                        <p className="text-[11px] text-slate-600 mb-2">
+                          Deja una valoración sobre cómo fue trabajar con este
+                          estudiante. Esto ayuda a otros empleadores.
+                        </p>
+
+                        {/* Paso 1: rating global */}
+                        <div className="flex items-center gap-1 mb-3">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setRating(star)}
+                              className={`w-7 h-7 rounded-full border text-xs font-semibold ${
+                                rating !== null && rating >= star
+                                  ? "bg-amber-400 border-amber-400 text-white"
+                                  : "bg-white border-slate-200 text-slate-600"
+                              }`}
+                            >
+                              {star}
+                            </button>
+                          ))}
+                          <span className="text-[11px] text-slate-500 ml-2">
+                            {rating
+                              ? `Calificación: ${rating}/5`
+                              : "Selecciona una calificación (5⭐ = lo volverías a contratar)"}
+                          </span>
+                        </div>
+
+                        {/* Paso 2: tags rápidos */}
+                        <div className="mb-3">
+                          <p className="text-[11px] text-slate-600 mb-1">
+                            Selecciona lo que mejor describe la experiencia:
+                          </p>
+
+                          {/* Positivos */}
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {[
+                              {
+                                key: "responsable_puntual",
+                                label: "Responsable y puntual",
+                              },
+                              {
+                                key: "calidad_trabajo",
+                                label: "Buena calidad de trabajo",
+                              },
+                              {
+                                key: "buena_comunicacion",
+                                label: "Buen comunicador",
+                              },
+                              {
+                                key: "buena_actitud",
+                                label: "Buena actitud / profesional",
+                              },
+                              {
+                                key: "autonomo",
+                                label: "Autónomo, poca guía",
+                              },
+                            ].map((chip) => (
+                              <button
+                                key={chip.key}
+                                type="button"
+                                onClick={() =>
+                                  toggleRatingTag(chip.key as RatingTagKey)
+                                }
+                                className={`px-3 py-1 rounded-full border text-[11px] ${
+                                  ratingTags[chip.key as RatingTagKey]
+                                    ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                                    : "bg-white border-slate-200 text-slate-600"
+                                }`}
+                              >
+                                {chip.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Flags de alerta */}
+                          <p className="text-[11px] text-slate-600 mb-1">
+                            ¿Ocurrió algo de esto? Márcalo como alerta:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              {
+                                key: "no_se_presento",
+                                label: "No se presentó",
+                              },
+                              {
+                                key: "cancelo_ultima_hora",
+                                label: "Canceló a última hora",
+                              },
+                              {
+                                key: "falta_respeto",
+                                label: "Falta de respeto",
+                              },
+                              {
+                                key: "no_termino_trabajo",
+                                label: "No terminó el trabajo",
+                              },
+                            ].map((chip) => (
+                              <button
+                                key={chip.key}
+                                type="button"
+                                onClick={() =>
+                                  toggleRatingTag(chip.key as RatingTagKey)
+                                }
+                                className={`px-3 py-1 rounded-full border text-[11px] ${
+                                  ratingTags[chip.key as RatingTagKey]
+                                    ? "bg-red-100 border-red-300 text-red-800"
+                                    : "bg-white border-slate-200 text-slate-600"
+                                }`}
+                              >
+                                {chip.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Comentario opcional */}
+                        <textarea
+                          className="w-full rounded-2xl border border-slate-200 text-[11px] px-3 py-2 mb-2 resize-none focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          rows={3}
+                          placeholder="Comentario opcional sobre el desempeño del estudiante (máx. 200 caracteres)..."
+                          value={ratingComment}
+                          onChange={(e) => setRatingComment(e.target.value)}
+                          maxLength={200}
+                        />
+
+                        {ratingMessage && (
+                          <div className="mb-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-700">
+                            {ratingMessage}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={handleSubmitRating}
+                          disabled={ratingLoading}
+                          className="px-4 py-1.5 rounded-full bg-sky-600 text-white text-[11px] font-semibold hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {ratingLoading ? "Guardando..." : "Guardar valoración"}
+                        </button>
+                      </section>
+                    ) : (
+                      <section className="mb-4 border-t border-slate-100 pt-3 mt-2">
+                        <h3 className="text-sm font-semibold mb-2">
+                          Valorar al estudiante
+                        </h3>
+                        <p className="text-[11px] text-slate-600">
+                          Podrás dejar una valoración cuando marques este CameYo
+                          como completado. Así mantenemos el historial de
+                          evaluaciones atado a trabajos realmente terminados.
+                        </p>
+                      </section>
+                    )}
 
                     {currentApp.estudiante_habilidades && (
                       <section className="mb-4">
@@ -995,7 +1257,79 @@ const EmployerPosts: React.FC = () => {
                             .map((h, idx) => (
                               <span
                                 key={idx}
-                                className="px-3 py-1 rounded-full bg-slate-100"
+                                className="px-2 py-1 rounded-full bg-slate-50 border border-slate-200"
+                              >
+                                {h}
+                              </span>
+                            ))}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                ) : (
+                  // -------- Vista normal antes de contratar --------
+                  <>
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden text-[11px] font-semibold text-slate-600">
+                          {currentApp.estudiante_foto_url ? (
+                            <img
+                              src={currentApp.estudiante_foto_url}
+                              alt={currentApp.estudiante_nombre}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            currentApp.estudiante_nombre
+                              .split(" ")
+                              .map((p) => p[0])
+                              .join("")
+                              .slice(0, 2)
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {currentApp.estudiante_nombre}
+                          </p>
+                          {currentApp.estudiante_carrera && (
+                            <p className="text-[11px] text-slate-600">
+                              {currentApp.estudiante_carrera}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Postuló el{" "}
+                            {currentApp.creado_en
+                              ? formatDate(currentApp.creado_en)
+                              : "fecha no disponible"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {currentApp.carta_presentacion && (
+                      <section className="mb-4">
+                        <h3 className="text-sm font-semibold mb-1">
+                          Carta de presentación
+                        </h3>
+                        <p className="text-[11px] text-slate-700 whitespace-pre-line">
+                          {currentApp.carta_presentacion}
+                        </p>
+                      </section>
+                    )}
+
+                    {currentApp.estudiante_habilidades && (
+                      <section className="mb-4">
+                        <h3 className="text-sm font-semibold mb-1">
+                          Habilidades destacadas
+                        </h3>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-slate-700">
+                          {currentApp.estudiante_habilidades
+                            .split(/[,;]+/g)
+                            .map((h) => h.trim())
+                            .filter(Boolean)
+                            .map((h, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-1 rounded-full bg-slate-50 border border-slate-200"
                               >
                                 {h}
                               </span>
@@ -1010,118 +1344,22 @@ const EmployerPosts: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Perfil público */}
-                    <section className="mb-4 border-t border-slate-100 pt-3 mt-2">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-semibold">
-                          Perfil público del estudiante
-                        </h3>
-                        <button
-                          className="px-3 py-1.5 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          onClick={handleViewPublicProfile}
-                          disabled={profileLoading || actionLoading}
-                        >
-                          {profileLoading
-                            ? "Cargando perfil..."
-                            : "Ver perfil público"}
-                        </button>
-                      </div>
-
-                      {profileError && (
-                        <div className="mb-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-[11px] text-red-700">
-                          {profileError}
-                        </div>
-                      )}
-
-                      {publicProfile && (
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] text-slate-700 space-y-1">
-                          <p className="font-semibold text-slate-800">
-                            {publicProfile.nombre} {publicProfile.apellido}
-                          </p>
-                          {publicProfile.titulo_perfil && (
-                            <p>{publicProfile.titulo_perfil}</p>
-                          )}
-                          <p>
-                            <span className="font-medium">Universidad:</span>{" "}
-                            {publicProfile.universidad}
-                          </p>
-                          <p>
-                            <span className="font-medium">Carrera:</span>{" "}
-                            {publicProfile.carrera}
-                          </p>
-                          <p>
-                            <span className="font-medium">Ciudad:</span>{" "}
-                            {publicProfile.ciudad}
-                          </p>
-                          <p>
-                            <span className="font-medium">Disponibilidad:</span>{" "}
-                            {publicProfile.disponibilidad_de_tiempo}
-                          </p>
-                          <p>
-                            <span className="font-medium">WhatsApp:</span>{" "}
-                            {publicProfile.whatsapp}
-                          </p>
-
-                          {publicProfile.sectores_preferencias &&
-                            publicProfile.sectores_preferencias.length > 0 && (
-                              <div className="mt-1">
-                                <p className="font-medium mb-1">
-                                  Sectores de preferencia:
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {publicProfile.sectores_preferencias.map(
-                                    (s, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="px-3 py-1 rounded-full bg-white border border-slate-200"
-                                      >
-                                        {s}
-                                      </span>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                          {publicProfile.habilidades_basicas &&
-                            publicProfile.habilidades_basicas.length > 0 && (
-                              <div className="mt-1">
-                                <p className="font-medium mb-1">
-                                  Habilidades básicas:
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {publicProfile.habilidades_basicas.map(
-                                    (h, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="px-3 py-1 rounded-full bg-white border border-slate-200"
-                                      >
-                                        {h}
-                                      </span>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                        </div>
-                      )}
-                    </section>
-
-                    {/* Botones aceptar / rechazar SOLO cuando aún no hay contratado */}
-                    <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
-                        className="px-3 py-1.5 rounded-full border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={handleRejectCurrent}
-                        disabled={actionLoading}
-                      >
-                        {actionLoading ? "Procesando..." : "Rechazar"}
-                      </button>
-                      <button
-                        className="px-3 py-1.5 rounded-full bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
                         onClick={handleAcceptCurrent}
                         disabled={actionLoading}
+                        className="px-4 py-1.5 rounded-full bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        {actionLoading ? "Procesando..." : "Aceptar"}
+                        {actionLoading ? "Procesando..." : "Aceptar postulante"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRejectCurrent}
+                        disabled={actionLoading}
+                        className="px-4 py-1.5 rounded-full border border-slate-300 text-[11px] text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        Rechazar
                       </button>
                     </div>
                   </>

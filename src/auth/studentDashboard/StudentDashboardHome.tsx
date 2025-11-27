@@ -1,3 +1,4 @@
+// src/auth/studentDashboard/StudentDashboardHome.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../global/AuthContext";
@@ -28,11 +29,20 @@ interface ApiResponseTrabajos {
   jobs: TrabajoPublico[];
 }
 
+interface RawPostulacion {
+  id: number;
+  trabajo_id: number;
+  estado: string;
+  fecha_creacion: string;
+}
+
 // Endpoint para los trabajos abiertos
 const JOBS_ENDPOINT = `${API_BASE_URL}/protected/todos_trabajos`;
 // Endpoint para postular a un trabajo
 const APPLY_ENDPOINT = (jobId: number) =>
   `${API_BASE_URL}/protected/trabajos/${jobId}/postular`;
+// Endpoint para saber a qué trabajos ya se postuló el estudiante
+const MY_APPLICATIONS_ENDPOINT = `${API_BASE_URL}/protected/mis-postulaciones`;
 
 const StudentDashboardHome: React.FC = () => {
   const { logout } = useAuth();
@@ -43,6 +53,9 @@ const StudentDashboardHome: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // IDs de trabajos a los que YA se postuló el estudiante
+  const [appliedJobIds, setAppliedJobIds] = useState<number[]>([]);
 
   // Modal
   const [selectedJob, setSelectedJob] = useState<TrabajoPublico | null>(null);
@@ -66,39 +79,65 @@ const StudentDashboardHome: React.FC = () => {
       return;
     }
 
-    const fetchTrabajos = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(`${JOBS_ENDPOINT}?page=${page}&limit=9`, {
+        // 1) Cargar trabajos disponibles (paginados)
+        const resJobs = await fetch(`${JOBS_ENDPOINT}?page=${page}&limit=9`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        const data: ApiResponseTrabajos = await res.json().catch(
-          () => ({} as any)
-        );
+        const dataJobs: ApiResponseTrabajos = await resJobs
+          .json()
+          .catch(() => ({} as any));
 
-        if (res.status === 401) {
+        if (resJobs.status === 401) {
           logout();
           navigate("/login", { replace: true });
           return;
         }
 
-        if (!res.ok) {
+        if (!resJobs.ok) {
           setError(
-            (data as any).error ||
-              (data as any).message ||
+            (dataJobs as any).error ||
+              (dataJobs as any).message ||
               "No se pudieron cargar los trabajos disponibles."
           );
           return;
         }
 
-        setTrabajos(data.jobs || []);
-        setTotalPages(data.total_pages || 1);
+        setTrabajos(dataJobs.jobs || []);
+        setTotalPages(dataJobs.total_pages || 1);
+
+        // 2) Cargar postulaciones del estudiante (para saber qué trabajos ocultar)
+        const resApps = await fetch(MY_APPLICATIONS_ENDPOINT, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const dataApps = await resApps.json().catch(() => ({} as any));
+
+        if (resApps.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (resApps.ok) {
+          const rawList = (dataApps.postulaciones || []) as RawPostulacion[];
+          const jobIds = rawList.map((p) => p.trabajo_id);
+          setAppliedJobIds(jobIds);
+        } else {
+          // Si falla este endpoint, no rompemos el home, solo logueamos
+          console.warn("No se pudo cargar mis postulaciones para filtrar jobs");
+        }
       } catch (err) {
         console.error(err);
         setError("Error de conexión. Intenta de nuevo.");
@@ -107,7 +146,7 @@ const StudentDashboardHome: React.FC = () => {
       }
     };
 
-    fetchTrabajos();
+    fetchData();
   }, [page, logout, navigate]);
 
   const nextPage = () => setPage((p) => (p < totalPages ? p + 1 : p));
@@ -123,6 +162,10 @@ const StudentDashboardHome: React.FC = () => {
 
   const closeJobModal = () => {
     setSelectedJob(null);
+    setCartaPresentacion("");
+    setApplyError(null);
+    setApplySuccess(null);
+    setApplyLoading(false);
   };
 
   // Utilidad para mostrar requisitos/habilidades como lista
@@ -178,24 +221,20 @@ const StudentDashboardHome: React.FC = () => {
         return;
       }
 
-      // Marcar éxito
+      // Éxito
       setApplySuccess("Te has postulado correctamente a este trabajo.");
 
-      // Opcional: actualizar el job en el listado para reflejar que ya tiene postulacion_contratada_id
-      if (typeof data.job_application_id === "number") {
-        setTrabajos((prev) =>
-          prev.map((job) =>
-            job.id === selectedJob.id
-              ? { ...job, postulacion_contratada_id: data.job_application_id }
-              : job
-          )
-        );
-      }
+      // Sacar el trabajo de la lista de "trabajos disponibles"
+      setTrabajos((prev) => prev.filter((job) => job.id !== selectedJob.id));
 
-      // Si quieres cerrar el modal después de postular, descomenta:
-      // setTimeout(() => {
-      //   closeJobModal();
-      // }, 1200);
+      // Guardar que este job ya fue postulado (por si vuelves a cargar otras páginas)
+      setAppliedJobIds((prev) =>
+        prev.includes(selectedJob.id) ? prev : [...prev, selectedJob.id]
+      );
+
+      setTimeout(() => {
+        closeJobModal();
+      }, 1200);
     } catch (err) {
       console.error(err);
       setApplyError("Error de conexión. Intenta nuevamente.");
@@ -204,7 +243,13 @@ const StudentDashboardHome: React.FC = () => {
     }
   };
 
-  const jobAlreadyHasApplication = !!selectedJob?.postulacion_contratada_id;
+  const applyButtonDisabled = applyLoading || !!applySuccess;
+
+  // --- RENDER ---
+  // Filtramos para NO mostrar trabajos que ya están en mis postulaciones
+  const trabajosVisibles = trabajos.filter(
+    (job) => !appliedJobIds.includes(job.id)
+  );
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex">
@@ -227,19 +272,20 @@ const StudentDashboardHome: React.FC = () => {
 
         {loading ? (
           <p className="text-sm text-slate-600">Cargando trabajos...</p>
-        ) : trabajos.length === 0 ? (
+        ) : trabajosVisibles.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
             <p className="text-sm font-medium text-slate-700 mb-1">
-              Aún no hay CameYos disponibles.
+              No hay CameYos nuevos disponibles por ahora.
             </p>
             <p className="text-xs text-slate-500">
-              Vuelve más tarde, pronto habrá empleadores publicando trabajos.
+              Ya te postulaste a los trabajos de esta página o aún no hay
+              publicaciones nuevas.
             </p>
           </div>
         ) : (
           <>
             <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-              {trabajos.map((job) => {
+              {trabajosVisibles.map((job) => {
                 const ciudad =
                   job.ciudad && job.ciudad.trim().length > 0
                     ? job.ciudad
@@ -481,10 +527,10 @@ const StudentDashboardHome: React.FC = () => {
                 <button
                   className="mt-6 w-full rounded-full bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
                   onClick={handleApply}
-                  disabled={applyLoading || jobAlreadyHasApplication}
+                  disabled={applyButtonDisabled}
                 >
-                  {jobAlreadyHasApplication
-                    ? "Este trabajo ya tiene una postulación asociada"
+                  {applySuccess
+                    ? "Postulación enviada"
                     : applyLoading
                     ? "Postulando..."
                     : "Postular a este trabajo"}
