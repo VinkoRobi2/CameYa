@@ -157,6 +157,7 @@ const StudentDashboardHome: React.FC = () => {
         },
         body: JSON.stringify({
           carta_presentacion: cartaPresentacion,
+          job_id: selectedJob.id,
         }),
       });
 
