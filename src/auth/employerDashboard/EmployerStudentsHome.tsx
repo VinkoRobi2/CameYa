@@ -37,6 +37,9 @@ const EmployerStudentsHome: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Índice del estudiante que se muestra al centro
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   // Modal de perfil público
   const [showModal, setShowModal] = useState(false);
   const [selectedStudent, setSelectedStudent] =
@@ -89,7 +92,9 @@ const EmployerStudentsHome: React.FC = () => {
           }
         );
 
-        const data: ApiResponse = await res.json().catch(() => ({} as any));
+        const data: ApiResponse = await res
+          .json()
+          .catch(() => ({} as any));
 
         if (res.status === 401) {
           logout();
@@ -118,6 +123,11 @@ const EmployerStudentsHome: React.FC = () => {
     fetchStudents();
   }, [page, limit, logout, navigate]);
 
+  // Cuando cambian los estudiantes (otra página), reseteamos el índice
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [students]);
+
   const nextPage = () => setPage((p) => p + 1);
   const prevPage = () => setPage((p) => (p > 1 ? p - 1 : 1));
 
@@ -140,15 +150,27 @@ const EmployerStudentsHome: React.FC = () => {
 
   const profile = selectedStudent;
 
+  // Navegación entre estudiantes de la página actual
+  const goPrevStudent = () => {
+    setCurrentIndex((idx) => (idx > 0 ? idx - 1 : idx));
+  };
+
+  const goNextStudent = () => {
+    setCurrentIndex((idx) =>
+      idx < students.length - 1 ? idx + 1 : idx
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex">
       <EmployerSidebar mode={mode} onLogout={handleLogout} />
 
-      <main className="flex-1 px-8 py-8 overflow-y-auto">
+      <main className="flex-1 px-6 md:px-8 py-8 overflow-y-auto">
         <header className="mb-6">
           <h1 className="text-xl font-semibold">Buscar estudiantes</h1>
           <p className="text-sm text-slate-600">
-            Explora perfiles públicos de estudiantes para tus CameYos.
+            Mira un perfil a la vez y navega con las flechas para encontrar
+            al estudiante ideal para tu CameYo.
           </p>
         </header>
 
@@ -171,103 +193,191 @@ const EmployerStudentsHome: React.FC = () => {
           </div>
         ) : (
           <>
-            <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-              {students.map((s, idx) => {
-                const st = {
-                  ...s,
-                  sectores_preferencias: normalizeList(
-                    s.sectores_preferencias
-                  ),
-                  habilidades_basicas: normalizeList(s.habilidades_basicas),
-                };
+            {/* Vista centrada: solo un estudiante protagonista + flechas */}
+            <section className="mb-6 flex flex-col items-center">
+              <div className="flex items-center justify-center gap-4 w-full max-w-2xl">
+                {/* Flecha izquierda */}
+                <button
+                  type="button"
+                  onClick={goPrevStudent}
+                  disabled={currentIndex === 0}
+                  className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  ←
+                </button>
 
-                const fullName =
-                  `${st.nombre ?? ""} ${st.apellido ?? ""}`.trim() ||
-                  "Estudiante CameYa";
+                {/* Card protagonista */}
+                {(() => {
+                  const s = students[currentIndex];
 
-                const subtitleParts: string[] = [];
-                if (st.titulo_perfil) subtitleParts.push(st.titulo_perfil);
-                if (st.carrera && st.universidad) {
-                  subtitleParts.push(`${st.carrera} en ${st.universidad}`);
-                }
-                const subtitle =
-                  subtitleParts.join(" · ") || "Estudiante universitario";
+                  const st = {
+                    ...s,
+                    sectores_preferencias: normalizeList(
+                      s.sectores_preferencias
+                    ),
+                    habilidades_basicas: normalizeList(
+                      s.habilidades_basicas
+                    ),
+                  };
 
-                const initials =
-                  fullName
-                    .split(" ")
-                    .filter(Boolean)
-                    .map((p) => p[0])
-                    .slice(0, 2)
-                    .join("")
-                    .toUpperCase() || "ST";
+                  const fullName =
+                    `${st.nombre ?? ""} ${st.apellido ?? ""}`.trim() ||
+                    "Estudiante CameYa";
 
-                const sectores = st.sectores_preferencias;
-                const habilidades = st.habilidades_basicas;
-                const disponibilidad =
-                  st.disponibilidad_de_tiempo || "No especificado";
+                  const subtitleParts: string[] = [];
+                  if (st.titulo_perfil)
+                    subtitleParts.push(st.titulo_perfil);
+                  if (st.carrera && st.universidad) {
+                    subtitleParts.push(
+                      `${st.carrera} en ${st.universidad}`
+                    );
+                  }
+                  const subtitle =
+                    subtitleParts.join(" · ") ||
+                    "Estudiante universitario";
 
-                return (
-                  <article
-                    key={`${fullName}-${idx}`}
-                    className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold text-sm">
-                        {initials}
+                  const initials =
+                    fullName
+                      .split(" ")
+                      .filter(Boolean)
+                      .map((p) => p[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase() || "ST";
+
+                  const sectores = st.sectores_preferencias || [];
+                  const habilidades = st.habilidades_basicas || [];
+                  const disponibilidad =
+                    st.disponibilidad_de_tiempo ||
+                    "No especificado";
+
+                  // Tomamos máximo 2 sectores y 1 habilidad (2–3 chips)
+                  const sectorChips = sectores.slice(0, 2);
+                  const habilidadChips = habilidades.slice(0, 1);
+
+                  const chips = [
+                    ...sectorChips.map((sec) => ({
+                      type: "sector" as const,
+                      label: sec,
+                    })),
+                    ...habilidadChips.map((hab) => ({
+                      type: "habilidad" as const,
+                      label: hab,
+                    })),
+                  ];
+
+                  return (
+                    <article
+                      className="relative bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-md hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer w-full"
+                      onClick={() => openStudentModal(st)}
+                    >
+                      {/* Imagen tipo Tinder card */}
+                      <div className="relative h-72 w-full bg-slate-200">
+                        {st.foto_perfil ? (
+                          <img
+                            src={st.foto_perfil}
+                            alt={fullName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-tr from-primary to-sky-400 flex items-center justify-center">
+                            <span className="text-4xl font-semibold text-white">
+                              {initials}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Overlay con nombre y subtítulo */}
+                        <div className="absolute inset-x-0 bottom-0 px-4 pb-4 pt-12 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                          <h2 className="text-white text-lg font-semibold leading-tight">
+                            {fullName}
+                          </h2>
+                          <p className="text-[11px] text-white/80">
+                            {subtitle}
+                            {st.ciudad && ` · ${st.ciudad}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h2 className="text-sm font-semibold">{fullName}</h2>
-                        <p className="text-xs text-slate-500">
-                          {subtitle}
-                          {st.ciudad && ` · ${st.ciudad}`}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {sectores.map((sec) => (
-                        <span
-                          key={sec}
-                          className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-[11px] font-medium"
-                        >
-                          {sec}
-                        </span>
-                      ))}
-                    </div>
+                      {/* Zona inferior: chips + CTA */}
+                      <div className="p-4 flex flex-col gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          {chips.map((chip) => (
+                            <span
+                              key={`${chip.type}-${chip.label}`}
+                              className={`px-3 py-1 rounded-full text-[11px] font-medium ${
+                                chip.type === "sector"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-sky-50 text-sky-700"
+                              }`}
+                            >
+                              {chip.label}
+                            </span>
+                          ))}
+                        </div>
 
-                    {habilidades.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {habilidades.map((hab) => (
-                          <span
-                            key={hab}
-                            className="px-3 py-1 rounded-full bg-violet-50 text-violet-700 text-[11px] font-medium"
-                          >
-                            {hab}
+                        <p className="text-[11px] text-slate-500">
+                          Disponibilidad:{" "}
+                          <span className="font-medium">
+                            {disponibilidad}
                           </span>
-                        ))}
+                        </p>
+
+                        <div className="mt-1 flex">
+                          <button
+                            type="button"
+                            className="flex-1 px-3 py-2 rounded-full bg-primary text-white text-[11px] font-semibold hover:brightness-110 active:scale-[0.98] transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openStudentModal(st);
+                            }}
+                          >
+                            Ver detalles del perfil
+                          </button>
+                        </div>
                       </div>
-                    )}
+                    </article>
+                  );
+                })()}
 
-                    <p className="text-[11px] text-slate-500">
-                      Disponibilidad:{" "}
-                      <span className="font-medium">{disponibilidad}</span>
-                    </p>
+                {/* Flecha derecha */}
+                <button
+                  type="button"
+                  onClick={goNextStudent}
+                  disabled={currentIndex === students.length - 1}
+                  className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  →
+                </button>
+              </div>
 
-                    {/* Detalles + modal de perfil público */}
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        className="px-3 py-1.5 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50"
-                        onClick={() => openStudentModal(st)}
-                      >
-                        Ver detalles
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+              {/* Controles móviles de flechas debajo */}
+              <div className="mt-4 flex sm:hidden gap-4">
+                <button
+                  type="button"
+                  onClick={goPrevStudent}
+                  disabled={currentIndex === 0}
+                  className="flex-1 inline-flex items-center justify-center h-9 rounded-full border border-slate-300 bg-white text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  ← Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={goNextStudent}
+                  disabled={currentIndex === students.length - 1}
+                  className="flex-1 inline-flex items-center justify-center h-9 rounded-full border border-slate-300 bg-white text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  Siguiente →
+                </button>
+              </div>
+
+              {/* Indicador de posición dentro de la página */}
+              <p className="mt-3 text-[11px] text-slate-600">
+                Perfil {currentIndex + 1} de {students.length} · Página {page}
+              </p>
             </section>
 
+            {/* Paginación de backend (sigue igual) */}
             <div className="flex justify-between items-center text-xs text-slate-600">
               <button
                 onClick={prevPage}
@@ -287,132 +397,127 @@ const EmployerStudentsHome: React.FC = () => {
           </>
         )}
 
-        {/* MODAL PERFIL PÚBLICO ESTUDIANTE */}
+        {/* MODAL PERFIL PÚBLICO ESTUDIANTE - FULL IMAGE PROTAGONISTA */}
         {showModal && profile && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
             onClick={closeStudentModal}
           >
             <div
-              className="bg-white rounded-3xl shadow-xl max-w-3xl w-[90%] max-h-[80vh] overflow-y-auto p-6"
+              className="relative w-full max-w-4xl aspect-[4/5] md:aspect-[16/9] rounded-3xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold text-sm overflow-hidden">
-                    {profile.foto_perfil ? (
-                      <img
-                        src={profile.foto_perfil}
-                        alt={`${profile.nombre} ${profile.apellido}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      (profile.nombre || "ST")
-                        .split(" ")
-                        .filter(Boolean)
-                        .map((p) => p[0])
-                        .slice(0, 2)
-                        .join("")
-                        .toUpperCase()
-                    )}
-                  </div>
+              {/* Imagen protagonista */}
+              {profile.foto_perfil ? (
+                <img
+                  src={profile.foto_perfil}
+                  alt={`${profile.nombre} ${profile.apellido}`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary to-sky-400 flex items-center justify-center">
+                  <span className="text-4xl md:text-5xl font-semibold text-white">
+                    {(
+                      `${profile.nombre ?? ""} ${
+                        profile.apellido ?? ""
+                      }`.trim() || "ST"
+                    )
+                      .split(" ")
+                      .filter(Boolean)
+                      .map((p) => p[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase()}
+                  </span>
+                </div>
+              )}
+
+              {/* Gradiente para leer texto */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+              {/* Botón cerrar */}
+              <button
+                onClick={closeStudentModal}
+                className="absolute top-4 right-4 h-8 w-8 rounded-full bg-black/60 text-white text-sm flex items-center justify-center hover:bg-black/80 transition-colors"
+              >
+                ✕
+              </button>
+
+              {/* Contenido sobre la imagen */}
+              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 md:p-8 text-white space-y-4 md:space-y-5 pointer-events-none">
+                {/* Cabecera: nombre + info principal */}
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4 pointer-events-auto">
                   <div>
-                    <h2 className="text-sm font-semibold">
+                    <h2 className="text-lg md:text-2xl font-semibold leading-tight">
                       {`${profile.nombre ?? ""} ${
                         profile.apellido ?? ""
                       }`.trim() || "Estudiante CameYa"}
                     </h2>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs md:text-sm text-white/80">
                       {profile.titulo_perfil ||
                         "Estudiante universitario CameYa"}
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="mt-1 text-[11px] md:text-xs text-white/70">
                       {profile.carrera && profile.universidad
                         ? `${profile.carrera} · ${profile.universidad}`
                         : profile.carrera || profile.universidad}
                       {profile.ciudad && ` · ${profile.ciudad}`}
                     </p>
                   </div>
+
+                  <div className="text-right text-[11px] md:text-xs text-white/80">
+                    <p className="uppercase tracking-wide text-white/60">
+                      Disponibilidad
+                    </p>
+                    <p className="font-semibold">
+                      {profile.disponibilidad_de_tiempo || "No especificado"}
+                    </p>
+                    <p className="mt-2 uppercase tracking-wide text-white/60">
+                      Contacto
+                    </p>
+                    <p className="font-semibold">
+                      {profile.whatsapp || "No disponible"}
+                    </p>
+                  </div>
                 </div>
 
-                <button
-                  onClick={closeStudentModal}
-                  className="text-xs text-slate-500 hover:text-slate-700"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <section className="mb-4">
-                <h3 className="text-sm font-semibold mb-1">Sobre el alumno</h3>
-                <p className="text-xs text-slate-700">
-                  {profile.titulo_perfil ||
-                    "Estudiante universitario en búsqueda de CameYos."}
-                </p>
-              </section>
-
-              {normalizeList(profile.sectores_preferencias).length > 0 && (
-                <section className="mb-4">
-                  <h3 className="text-sm font-semibold mb-1">
-                    Sectores de preferencia
-                  </h3>
-                  <div className="flex flex-wrap gap-2 text-[11px] text-slate-700">
-                    {normalizeList(profile.sectores_preferencias).map(
-                      (s, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1 rounded-full bg-sky-50 border border-sky-100"
-                        >
-                          {s}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {normalizeList(profile.habilidades_basicas).length > 0 && (
-                <section className="mb-4">
-                  <h3 className="text-sm font-semibold mb-1">
-                    Habilidades básicas
-                  </h3>
-                  <div className="flex flex-wrap gap-2 text-[11px] text-slate-700">
-                    {normalizeList(profile.habilidades_basicas).map(
-                      (h, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1 rounded-full bg-violet-50 border border-violet-100"
-                        >
-                          {h}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </section>
-              )}
-
-              <section className="mb-4">
-                <h3 className="text-sm font-semibold mb-1">Disponibilidad</h3>
-                <p className="text-xs text-slate-700">
-                  {profile.disponibilidad_de_tiempo || "No especificado"}
-                </p>
-              </section>
-
-              <section className="mb-2">
-                <h3 className="text-sm font-semibold mb-1">Contacto</h3>
-                <p className="text-xs text-slate-700">
-                  WhatsApp:{" "}
-                  {profile.whatsapp ? (
-                    <span className="font-semibold">{profile.whatsapp}</span>
-                  ) : (
-                    "No disponible"
+                {/* Chips: sectores y habilidades */}
+                <div className="flex flex-wrap gap-2 text-[11px] md:text-xs pointer-events-auto">
+                  {normalizeList(profile.sectores_preferencias).map(
+                    (s, idx) => (
+                      <span
+                        key={`sec-${idx}`}
+                        className="px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm"
+                      >
+                        {s}
+                      </span>
+                    )
                   )}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Usa este contacto solo cuando haya interés real en avanzar con
-                  un CameYo.
-                </p>
-              </section>
+                  {normalizeList(profile.habilidades_basicas).map(
+                    (h, idx) => (
+                      <span
+                        key={`hab-${idx}`}
+                        className="px-3 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-sm"
+                      >
+                        {h}
+                      </span>
+                    )
+                  )}
+                </div>
+
+                {/* Descripción breve */}
+                <div className="max-w-2xl text-[11px] md:text-xs text-white/85 pointer-events-auto">
+                  <p>
+                    {profile.titulo_perfil ||
+                      "Estudiante en búsqueda de CameYos que se ajusten a su perfil y disponibilidad."}
+                  </p>
+                  <p className="mt-1 text-white/70">
+                    Usa el contacto solo cuando tengas interés real en avanzar
+                    con un CameYo. Sé claro con horario, pago y tipo de tareas
+                    al escribirle.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
