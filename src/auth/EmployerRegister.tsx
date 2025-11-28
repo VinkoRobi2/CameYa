@@ -112,21 +112,21 @@ const EmployerRegister: React.FC = () => {
   const isEmpresa = form.tipoIdentidad === "Empresa";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           <Reveal>
-            <div className="bg-black/40 border border-white/10 rounded-2xl p-6 shadow-xl shadow-black/40">
-              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2">
+            <div className="bg-white/90 border border-slate-200 rounded-2xl p-6 shadow-xl">
+              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2 text-slate-900">
                 Crea tu cuenta empleador
               </h1>
-              <p className="text-sm text-gray-300 text-center mb-6">
+              <p className="text-sm text-slate-600 text-center mb-6">
                 Publica trabajos flash y conecta con estudiantes verificados en
                 minutos.
               </p>
 
               {error && (
-                <p className="mb-4 text-sm text-red-400 text-center">
+                <p className="mb-4 text-sm text-red-500 text-center">
                   {error}
                 </p>
               )}
@@ -134,27 +134,29 @@ const EmployerRegister: React.FC = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Tipo de empleador */}
                 <div>
-                  <p className="block text-sm font-medium mb-1">
+                  <p className="block text-sm font-medium mb-1 text-slate-800">
                     Tipo de empleador
                   </p>
                   <div className="flex gap-3 text-sm">
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-slate-700">
                       <input
                         type="radio"
                         name="tipoIdentidad"
                         value="Persona"
                         checked={form.tipoIdentidad === "Persona"}
                         onChange={handleChange}
+                        className="accent-[#0A5FE3]"
                       />
                       Persona
                     </label>
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-slate-700">
                       <input
                         type="radio"
                         name="tipoIdentidad"
                         value="Empresa"
                         checked={form.tipoIdentidad === "Empresa"}
                         onChange={handleChange}
+                        className="accent-[#0A5FE3]"
                       />
                       Empresa
                     </label>
@@ -164,7 +166,7 @@ const EmployerRegister: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="nombre"
                     >
                       Nombre
@@ -176,12 +178,12 @@ const EmployerRegister: React.FC = () => {
                       required
                       value={form.nombre}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="apellido"
                     >
                       Apellido
@@ -193,14 +195,14 @@ const EmployerRegister: React.FC = () => {
                       required
                       value={form.apellido}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="email"
                   >
                     Correo electrónico
@@ -212,13 +214,13 @@ const EmployerRegister: React.FC = () => {
                     required
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   />
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="password"
                   >
                     Contraseña
@@ -230,14 +232,14 @@ const EmployerRegister: React.FC = () => {
                     required
                     value={form.password}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="cedulaRuc"
                     >
                       {isEmpresa ? "RUC" : "Cédula"}
@@ -249,12 +251,12 @@ const EmployerRegister: React.FC = () => {
                       required
                       value={form.cedulaRuc}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="telefono"
                     >
                       Teléfono
@@ -265,7 +267,7 @@ const EmployerRegister: React.FC = () => {
                       type="tel"
                       value={form.telefono}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                 </div>
@@ -273,7 +275,7 @@ const EmployerRegister: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="fechaNacimiento"
                     >
                       Fecha de nacimiento / creación
@@ -284,12 +286,12 @@ const EmployerRegister: React.FC = () => {
                       type="date"
                       value={form.fechaNacimiento}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="ciudad"
                     >
                       Ciudad
@@ -301,7 +303,7 @@ const EmployerRegister: React.FC = () => {
                       value={form.ciudad}
                       onChange={handleChange}
                       placeholder="Ej. Guayaquil"
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                 </div>
@@ -310,7 +312,7 @@ const EmployerRegister: React.FC = () => {
                   <>
                     <div>
                       <label
-                        className="block text-sm font-medium mb-1"
+                        className="block text-sm font-medium mb-1 text-slate-800"
                         htmlFor="razonSocial"
                       >
                         Razón social
@@ -321,13 +323,13 @@ const EmployerRegister: React.FC = () => {
                         type="text"
                         value={form.razonSocial}
                         onChange={handleChange}
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                       />
                     </div>
 
                     <div>
                       <label
-                        className="block text-sm font-medium mb-1"
+                        className="block text-sm font-medium mb-1 text-slate-800"
                         htmlFor="dominioCorporativo"
                       >
                         Dominio corporativo (opcional)
@@ -339,20 +341,20 @@ const EmployerRegister: React.FC = () => {
                         value={form.dominioCorporativo}
                         onChange={handleChange}
                         placeholder="Ej. miempresa.com"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                       />
                     </div>
                   </>
                 )}
 
-                <div className="flex items-start gap-2 text-xs text-gray-300">
+                <div className="flex items-start gap-2 text-xs text-slate-600">
                   <input
                     id="terminosAceptados"
                     name="terminosAceptados"
                     type="checkbox"
                     checked={form.terminosAceptados}
                     onChange={handleChange}
-                    className="mt-1"
+                    className="mt-1 accent-[#00A14D]"
                   />
                   <label htmlFor="terminosAceptados">
                     He leído y acepto los términos, condiciones y el uso de mis
@@ -363,7 +365,7 @@ const EmployerRegister: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 rounded-full bg-primary text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-11 rounded-full bg-[#0A5FE3] text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {loading ? "Registrando..." : "Registrarme"}
                 </button>

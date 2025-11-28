@@ -108,21 +108,21 @@ const StudentRegister: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           <Reveal>
-            <div className="bg-black/40 border border-white/10 rounded-2xl p-6 shadow-xl shadow-black/40">
-              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2">
+            <div className="bg-white/90 border border-slate-200 rounded-2xl p-6 shadow-xl">
+              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2 text-slate-900">
                 Regístrate como estudiante
               </h1>
-              <p className="text-sm text-gray-300 text-center mb-6">
+              <p className="text-sm text-slate-600 text-center mb-6">
                 Primero registra tu correo .edu.ec. Luego lo verificas desde el
                 mail y completas tu perfil.
               </p>
 
               {error && (
-                <p className="mb-4 text-sm text-red-400 text-center">
+                <p className="mb-4 text-sm text-red-500 text-center">
                   {error}
                 </p>
               )}
@@ -131,7 +131,7 @@ const StudentRegister: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="nombre"
                     >
                       Nombre
@@ -143,12 +143,12 @@ const StudentRegister: React.FC = () => {
                       required
                       value={form.nombre}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="apellido"
                     >
                       Apellido
@@ -160,14 +160,14 @@ const StudentRegister: React.FC = () => {
                       required
                       value={form.apellido}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="email"
                   >
                     Correo institucional (.edu.ec)
@@ -179,13 +179,13 @@ const StudentRegister: React.FC = () => {
                     required
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   />
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="password"
                   >
                     Contraseña
@@ -197,14 +197,14 @@ const StudentRegister: React.FC = () => {
                     required
                     value={form.password}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="cedula"
                     >
                       Cédula
@@ -215,12 +215,12 @@ const StudentRegister: React.FC = () => {
                       type="text"
                       value={form.cedula}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="telefono"
                     >
                       Teléfono
@@ -231,14 +231,14 @@ const StudentRegister: React.FC = () => {
                       type="tel"
                       value={form.telefono}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="fechaNacimiento"
                   >
                     Fecha de nacimiento
@@ -249,14 +249,14 @@ const StudentRegister: React.FC = () => {
                     type="date"
                     value={form.fechaNacimiento}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="universidad"
                     >
                       Universidad
@@ -267,12 +267,12 @@ const StudentRegister: React.FC = () => {
                       type="text"
                       value={form.universidad}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1"
+                      className="block text-sm font-medium mb-1 text-slate-800"
                       htmlFor="carrera"
                     >
                       Carrera
@@ -283,14 +283,14 @@ const StudentRegister: React.FC = () => {
                       type="text"
                       value={form.carrera}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="disponibilidad"
                   >
                     Disponibilidad de tiempo
@@ -300,7 +300,7 @@ const StudentRegister: React.FC = () => {
                     name="disponibilidad"
                     value={form.disponibilidad}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   >
                     <option value="">Selecciona una opción</option>
                     <option value="solo fines de semana">
@@ -309,20 +309,18 @@ const StudentRegister: React.FC = () => {
                     <option value="entre semana y fines de semana">
                       Entre semana y fines de semana
                     </option>
-                    <option value="turnos flexibles">
-                      Turnos flexibles
-                    </option>
+                    <option value="turnos flexibles">Turnos flexibles</option>
                   </select>
                 </div>
 
-                <div className="flex items-start gap-2 text-xs text-gray-300">
+                <div className="flex items-start gap-2 text-xs text-slate-600">
                   <input
                     id="terminosAceptados"
                     name="terminosAceptados"
                     type="checkbox"
                     checked={form.terminosAceptados}
                     onChange={handleChange}
-                    className="mt-1"
+                    className="mt-1 accent-[#00A14D]"
                   />
                   <label htmlFor="terminosAceptados">
                     He leído y acepto los términos, condiciones y el uso de mis
@@ -333,7 +331,7 @@ const StudentRegister: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 rounded-full bg-primary text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-11 rounded-full bg-[#0A5FE3] text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {loading ? "Registrando..." : "Registrarme"}
                 </button>

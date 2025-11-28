@@ -138,29 +138,29 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <main className="relative flex-1 flex items-center justify-center px-4 py-10">
         {/* Botón volver al inicio */}
         <button
           type="button"
           onClick={() => navigate("/")}
-          className="absolute top-4 left-4 rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold hover:bg-white/10 transition-colors"
+          className="absolute top-4 left-4 rounded-full border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors bg-white/80 shadow-sm"
         >
           ← Volver al inicio
         </button>
 
         <div className="w-full max-w-md">
           <Reveal>
-            <div className="bg-black/40 border border-white/10 rounded-2xl p-6 shadow-xl shadow-black/40">
-              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2">
+            <div className="bg-white/90 border border-slate-200 rounded-2xl p-6 shadow-xl">
+              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2 text-slate-900">
                 Iniciar sesión
               </h1>
-              <p className="text-sm text-gray-300 text-center mb-6">
+              <p className="text-sm text-slate-600 text-center mb-6">
                 Usa el correo y contraseña que registraste en CameYa.
               </p>
 
               {error && (
-                <p className="mb-4 text-sm text-red-400 text-center">
+                <p className="mb-4 text-sm text-red-500 text-center">
                   {error}
                 </p>
               )}
@@ -168,7 +168,7 @@ const Login: React.FC = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="email"
                   >
                     Correo electrónico
@@ -180,13 +180,13 @@ const Login: React.FC = () => {
                     required
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   />
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1"
+                    className="block text-sm font-medium mb-1 text-slate-800"
                     htmlFor="password"
                   >
                     Contraseña
@@ -198,14 +198,14 @@ const Login: React.FC = () => {
                     required
                     value={form.password}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 rounded-full bg-primary text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-11 rounded-full bg-[#0A5FE3] text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {loading ? "Ingresando..." : "Entrar"}
                 </button>

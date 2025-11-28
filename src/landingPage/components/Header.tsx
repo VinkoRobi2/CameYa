@@ -9,13 +9,10 @@ export default function Header() {
   const location = useLocation();
 
   const handleLogoClick: MouseEventHandler<HTMLAnchorElement> = (e) => {
-    // Si ya estoy en "/", evitar navegación y solo hacer scroll suave.
     if (location.pathname === "/") {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    // Si estoy en otra ruta, el <Link> navega a "/" normalmente
-    // y tu componente ScrollToTop se encarga del scroll.
   };
 
   return (
@@ -23,53 +20,58 @@ export default function Header() {
       <div className="container mx-auto flex items-center justify-between px-6 py-5">
         {/* Logo */}
         <div className="flex items-center gap-4">
-          <Link to="/" onClick={handleLogoClick} aria-label="Ir al inicio">
+          <Link
+            to="/"
+            onClick={handleLogoClick}
+            aria-label="Ir al inicio"
+            className="group inline-flex items-center"
+          >
             <img
               src={logoLight}
-              className="h-14 w-auto block dark:hidden"
+              className="h-14 w-auto block dark:hidden transition-transform duration-200 ease-out group-hover:scale-105"
               alt="CameYa"
             />
             <img
               src={logoDark}
-              className="h-14 w-auto hidden dark:block"
+              className="h-14 w-auto hidden dark:block transition-transform duration-200 ease-out group-hover:scale-105"
               alt="CameYa"
             />
           </Link>
         </div>
 
-        {/* Navegación interna de la landing */}
+        {/* Navegación interna */}
         <nav className="hidden md:flex items-center gap-8">
-          <a
-            className="text-sm font-semibold hover:text-primary"
-            href="#gigs"
+          <Link
+            className="text-sm font-semibold hover:text-primary transition-colors"
+            to="/register/student"
           >
             Buscar CameYo
-          </a>
-          <a
-            className="text-sm font-semibold hover:text-primary"
-            href="#post"
+          </Link>
+          <Link
+            className="text-sm font-semibold hover:text-primary transition-colors"
+            to="/register/employer"
           >
             Publicar CameYo
-          </a>
-          <a
-            className="text-sm font-semibold hover:text-primary"
-            href="#about"
+          </Link>
+          <Link
+            className="text-sm font-semibold hover:text-primary transition-colors"
+            to="/about"
           >
             Acerca
-          </a>
+          </Link>
         </nav>
 
         {/* Acciones Auth */}
         <div className="flex items-center gap-2">
           <Link
             to="/login"
-            className="h-10 min-w-[84px] rounded-full px-4 text-sm font-semibold bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center"
+            className="h-10 min-w-[84px] rounded-full px-4 text-sm font-semibold bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center transition-colors"
           >
             Ingresar
           </Link>
           <Link
             to="/register"
-            className="h-10 min-w-[84px] rounded-full px-4 text-sm font-semibold bg-primary text-white hover:opacity-90 flex items-center justify-center"
+            className="h-10 min-w-[84px] rounded-full px-4 text-sm font-semibold bg-primary text-white hover:opacity-90 flex items-center justify-center transition-opacity"
           >
             Registrarse
           </Link>
