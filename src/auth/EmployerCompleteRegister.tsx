@@ -1,4 +1,3 @@
-// src/auth/EmployerCompleteRegister.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
@@ -46,7 +45,13 @@ const EmployerCompleteRegister: React.FC = () => {
 
     try {
       const parsed = JSON.parse(storedUser);
-      const raw = (parsed.tipo_identidad || parsed.TipoIdentidad || "").toString().toLowerCase();
+      const raw = (
+        parsed.tipo_identidad ||
+        parsed.TipoIdentidad ||
+        ""
+      )
+        .toString()
+        .toLowerCase();
       if (raw === "empresa") {
         setTipoIdentidad("empresa");
       } else {
@@ -196,8 +201,8 @@ const EmployerCompleteRegister: React.FC = () => {
 
   if (!tipoIdentidad) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <p className="text-sm text-gray-300">
+      <div className="min-h-screen bg-background-light text-foreground-light dark:bg-background-dark dark:text-foreground-dark flex items-center justify-center">
+        <p className="text-sm text-foreground-light/70 dark:text-foreground-dark/70">
           Cargando tu perfil de empleador...
         </p>
       </div>
@@ -208,17 +213,17 @@ const EmployerCompleteRegister: React.FC = () => {
   const esEmpresa = tipoIdentidad === "empresa";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen bg-background-light text-foreground-light dark:bg-background-dark dark:text-foreground-dark flex flex-col">
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           <Reveal>
-            <div className="bg-black/40 border border-white/10 rounded-2xl p-6 shadow-xl shadow-black/40">
+            <div className="bg-white/95 dark:bg-background-dark/95 border border-primary/10 rounded-2xl p-6 shadow-xl">
               {/* Header */}
               <div className="mb-4">
-                <p className="text-xs text-gray-400 mb-1">
+                <p className="text-xs text-foreground-light/60 dark:text-foreground-dark/60 mb-1">
                   Paso {step + 1} de {stepsTotal}
                 </p>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary transition-all"
                     style={{ width: `${progress}%` }}
@@ -229,17 +234,17 @@ const EmployerCompleteRegister: React.FC = () => {
               <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2">
                 Completa tu perfil de empleador
               </h1>
-              <p className="text-sm text-gray-300 text-center mb-6">
+              <p className="text-sm text-foreground-light/70 dark:text-foreground-dark/70 text-center mb-6">
                 Define cómo se verá tu perfil ante los estudiantes de CameYa.
               </p>
 
               {error && (
-                <p className="mb-4 text-sm text-red-400 text-center">
+                <p className="mb-4 text-sm text-red-500 text-center">
                   {error}
                 </p>
               )}
               {message && (
-                <p className="mb-4 text-sm text-emerald-400 text-center">
+                <p className="mb-4 text-sm text-emerald-600 text-center">
                   {message}
                 </p>
               )}
@@ -262,7 +267,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.fotoPerfil}
                         onChange={handleChange}
                         placeholder="URL de tu foto o logo principal"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -284,7 +289,7 @@ const EmployerCompleteRegister: React.FC = () => {
                             ? "Ej. Empresa de eventos deportivos"
                             : "Ej. Emprendedor de logística de eventos"
                         }
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -306,7 +311,7 @@ const EmployerCompleteRegister: React.FC = () => {
                             ? "Cuenta brevemente a qué se dedica tu empresa y qué tipo de trabajos publicas."
                             : "Cuenta quién eres, qué haces y qué tipo de trabajos sueles publicar."
                         }
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
                       />
                     </div>
 
@@ -324,7 +329,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.ubicacion}
                         onChange={handleChange}
                         placeholder="Ej. Guayaquil"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -342,7 +347,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.preferenciasCategorias}
                         onChange={handleChange}
                         placeholder="Ej. eventos, atención al cliente, almacenes... (separa por comas)"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -365,7 +370,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.whatsapp}
                         onChange={handleChange}
                         placeholder="Ej. +593 99 999 9999"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -383,7 +388,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.linkedin}
                         onChange={handleChange}
                         placeholder="URL de tu perfil o empresa"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -401,7 +406,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.facebookIG}
                         onChange={handleChange}
                         placeholder="URL de Fanpage o perfil"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -419,7 +424,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.otrosLinks}
                         onChange={handleChange}
                         placeholder="Web propia, portafolio, etc."
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -442,7 +447,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.nombreComercial}
                         onChange={handleChange}
                         placeholder="Ej. CameYa Events S.A."
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -459,7 +464,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         type="text"
                         value={form.razonSocial}
                         onChange={handleChange}
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -477,7 +482,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.dominioCorporativo}
                         onChange={handleChange}
                         placeholder="Ej. miempresa.com"
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -495,7 +500,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.areaActividadPrincipal}
                         onChange={handleChange}
                         placeholder="Ej. organización de eventos, retail, logística..."
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -512,7 +517,7 @@ const EmployerCompleteRegister: React.FC = () => {
                         value={form.descripcionEmpresa}
                         onChange={handleChange}
                         rows={3}
-                        className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
                       />
                     </div>
                   </div>
@@ -524,7 +529,7 @@ const EmployerCompleteRegister: React.FC = () => {
                     type="button"
                     onClick={handleBack}
                     disabled={step === 0 || loading}
-                    className="h-10 px-4 rounded-full border border-white/20 text-xs font-medium text-gray-200 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="h-10 px-4 rounded-full border border-slate-200 dark:border-slate-700 text-xs font-medium text-foreground-light/80 dark:text-foreground-dark/80 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Atrás
                   </button>
@@ -534,7 +539,7 @@ const EmployerCompleteRegister: React.FC = () => {
                       type="button"
                       onClick={handleNext}
                       disabled={loading}
-                      className="h-10 px-6 rounded-full bg-primary text-sm font-semibold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="h-10 px-6 rounded-full bg-primary text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                     >
                       Siguiente
                     </button>
@@ -543,7 +548,7 @@ const EmployerCompleteRegister: React.FC = () => {
                       type="button"
                       onClick={handleSubmit}
                       disabled={loading}
-                      className="h-10 px-6 rounded-full bg-primary text-sm font-semibold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="h-10 px-6 rounded-full bg-primary text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                     >
                       {loading ? "Guardando..." : "Guardar y finalizar"}
                     </button>

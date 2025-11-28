@@ -189,12 +189,6 @@ const EmployerCreateJob: React.FC = () => {
               <h1 className="text-xl md:text-2xl font-semibold mb-1">
                 Publicar un nuevo CameYo
               </h1>
-              <p className="text-xs md:text-sm text-foreground-light/70 dark:text-foreground-dark/70">
-                Completa estos datos en 3 pasos:{" "}
-                <span className="font-semibold">
-                  (1) Básicos, (2) Pago y ubicación, (3) Detalles del trabajo.
-                </span>
-              </p>
               <p className="mt-1 text-[11px] md:text-xs text-foreground-light/60 dark:text-foreground-dark/60">
                 Los campos marcados con <span className="font-semibold">*</span>{" "}
                 son obligatorios. Mientras más claro describas el CameYo, mejores
