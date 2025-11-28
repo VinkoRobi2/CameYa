@@ -1,6 +1,6 @@
 import heroVideo from "../../assets/videos/students.mp4";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 export default function Hero() {
   const navigate = useNavigate();
@@ -13,26 +13,32 @@ export default function Hero() {
     navigate("/register/employer");
   };
 
+  // Tupla de easing tipada para que TS la acepte como Easing
+  const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
   // Variantes de animación para el hero (se ejecutan al montar, no por scroll)
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0, y: 16 },
     visible: {
       opacity: 1,
       y: 0,
       transition: {
         duration: 0.45,
-        ease: [0.16, 1, 0.3, 1],
+        ease: EASE_OUT,
         staggerChildren: 0.08,
       },
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 18 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+      transition: {
+        duration: 0.4,
+        ease: EASE_OUT,
+      },
     },
   };
 
