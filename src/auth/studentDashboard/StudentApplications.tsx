@@ -37,7 +37,7 @@ interface EmployerContact {
   linkedin: string;
   facebook_ig: string;
   otros_links: string; // CSV
-  empleador_id: number; // 👈 viene de info-empleador
+  empleador_id: number; // viene de info-empleador
 }
 
 // Tags para valorar al empleador
@@ -58,7 +58,7 @@ const MY_APPLICATIONS_ENDPOINT = `${API_BASE_URL}/protected/mis-postulaciones`;
 const EMPLOYER_CONTACT_BY_JOB_ENDPOINT = `${API_BASE_URL}/protected/info-empleador`;
 const RATE_EMPLOYER_ENDPOINT = `${API_BASE_URL}/protected/valorar-empleador`;
 
-// 🔹 Endpoint alineado con EstudianteCompletarHandler (completar.go)
+// Endpoint alineado con EstudianteCompletarHandler (completar.go)
 const STUDENT_COMPLETE_ENDPOINT = `${API_BASE_URL}/protected/completar/estudiante`;
 
 const StudentApplications: React.FC = () => {
@@ -299,90 +299,88 @@ const StudentApplications: React.FC = () => {
     resetConfirmState();
   };
 
-const handleSubmitRating = async () => {
-  if (!selectedApp) return;
+  // Enviar valoración al empleador
+  const handleSubmitRating = async () => {
+    if (!selectedApp) return;
 
-  if (rating === null) {
-    setRatingMessage("Selecciona una calificación antes de enviar.");
-    return;
-  }
+    if (rating === null) {
+      setRatingMessage("Selecciona una calificación antes de enviar.");
+      return;
+    }
 
-  // Ahora tomamos el ID del empleador desde el contacto cargado por info-empleador
-  if (!contact || !contact.empleador_id) {
-    setRatingMessage(
-      "No se pudo identificar al empleador a valorar (no se encontró empleador_id en la información de contacto)."
-    );
-    return;
-  }
+    // ID del empleador desde info-empleador
+    if (!contact || !contact.empleador_id) {
+      setRatingMessage(
+        "No se pudo identificar al empleador a valorar (no se encontró empleador_id en la información de contacto)."
+      );
+      return;
+    }
 
-  const token = localStorage.getItem("auth_token");
-  if (!token) {
-    logout();
-    navigate("/login", { replace: true });
-    return;
-  }
-
-  // 👇 Payload EXACTO que espera el backend (ValoracionEmpleador)
-  const payload = {
-    empleador_valorado_id: contact.empleador_id,
-    job_id: selectedApp.trabajo_id,
-
-    // Mapeo de tus chips a los booleanos del backend:
-    claridad_trabajo: ratingTags.explica_bien,
-    respeto_trato: ratingTags.trato_respetuoso,
-    pago_cumplimiento: ratingTags.paga_puntual,
-    organizacion: ratingTags.ideal_recurrente,
-    ambiente_seguridad: ratingTags.ambiente_seguro,
-
-    // Extras (por si luego amplías el struct en Go)
-    rating,
-    comentario: ratingComment.trim(),
-  };
-
-  try {
-    setRatingLoading(true);
-    setRatingMessage(null);
-
-    const res = await fetch(RATE_EMPLOYER_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json().catch(() => ({} as any));
-
-    if (res.status === 401) {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
       logout();
       navigate("/login", { replace: true });
       return;
     }
 
-    if (!res.ok) {
+    const payload = {
+      empleador_valorado_id: contact.empleador_id,
+      job_id: selectedApp.trabajo_id,
+
+      claridad_trabajo: ratingTags.explica_bien,
+      respeto_trato: ratingTags.trato_respetuoso,
+      pago_cumplimiento: ratingTags.paga_puntual,
+      organizacion: ratingTags.ideal_recurrente,
+      ambiente_seguridad: ratingTags.ambiente_seguro,
+
+      rating,
+      comentario: ratingComment.trim(),
+    };
+
+    try {
+      setRatingLoading(true);
+      setRatingMessage(null);
+
+      const res = await fetch(RATE_EMPLOYER_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({} as any));
+
+      if (res.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!res.ok) {
+        setRatingMessage(
+          data.error ||
+            data.message ||
+            "No se pudo guardar la valoración. Intenta de nuevo."
+        );
+        return;
+      }
+
       setRatingMessage(
-        data.error ||
-          data.message ||
-          "No se pudo guardar la valoración. Intenta de nuevo."
+        "Gracias por valorar al empleador. Tu opinión ayuda a proteger a otros estudiantes."
       );
-      return;
+    } catch (err) {
+      console.error(err);
+      setRatingMessage(
+        "Error de conexión al enviar la valoración. Intenta nuevamente."
+      );
+    } finally {
+      setRatingLoading(false);
     }
+  };
 
-    setRatingMessage(
-      "Gracias por valorar al empleador. Tu opinión ayuda a proteger a otros estudiantes."
-    );
-  } catch (err) {
-    console.error(err);
-    setRatingMessage(
-      "Error de conexión al enviar la valoración. Intenta nuevamente."
-    );
-  } finally {
-    setRatingLoading(false);
-  }
-};
-
-  // 🔹 Llama a EstudianteCompletarHandler (completar.go)
+  // Llama a EstudianteCompletarHandler (completar.go)
   const handleConfirmCompletion = async () => {
     if (!selectedApp) return;
 
@@ -405,7 +403,7 @@ const handleSubmitRating = async () => {
         },
         body: JSON.stringify({
           postulacion_id: selectedApp.id,
-          job_id: selectedApp.trabajo_id, // 👈 clave exacta del JSON en completar.go
+          job_id: selectedApp.trabajo_id,
         }),
       });
 
@@ -426,19 +424,11 @@ const handleSubmitRating = async () => {
         return;
       }
 
-      setConfirmMessage(
-        "Has confirmado que el trabajo ha finalizado. Ahora puedes valorar al empleador."
-      );
-
-      // Actualizar estado local a "completada" para liberar el rating
-      setSelectedApp((prev) =>
-        prev ? { ...prev, estado: "completada" } : prev
-      );
-      setApps((prev) =>
-        prev.map((a) =>
-          a.id === selectedApp.id ? { ...a, estado: "completada" } : a
-        )
-      );
+      // ✅ Éxito:
+      // 1) Sacar la postulación de la lista de "Mis postulaciones"
+      // 2) Cerrar el modal
+      setApps((prev) => prev.filter((a) => a.id !== selectedApp.id));
+      setSelectedApp(null);
     } catch (err) {
       console.error(err);
       setConfirmMessage(
@@ -738,8 +728,9 @@ const handleSubmitRating = async () => {
                         </h3>
                         <p className="text-[11px] text-slate-600 mb-2">
                           Cuando el CameYo realmente haya terminado, confirma
-                          aquí. Esto cerrará el trabajo y activará la opción de
-                          valorar al empleador.
+                          aquí. Esto sacará el trabajo de tus postulaciones y,
+                          cuando el empleador también lo marque, aparecerá en
+                          Trabajos completados.
                         </p>
                         {confirmMessage && (
                           <div className="mb-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[11px] text-slate-700">
@@ -780,8 +771,8 @@ const handleSubmitRating = async () => {
                         </h3>
                         <p className="text-[11px] text-slate-600">
                           Podrás valorar al empleador una vez que el CameYo se
-                          marque como completado. Esto ayuda a proteger a otros
-                          estudiantes de malos empleadores.
+                          marque como completado por ambas partes. Eso ayuda a
+                          proteger a otros estudiantes de malos empleadores.
                         </p>
                       </section>
                     );

@@ -49,8 +49,14 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
           Mis postulaciones
         </button>
 
-        {/* Placeholder por ahora */}
-        <button className={btnClasses(false)}>Trabajos completados</button>
+        <button
+          onClick={() => navigate("/dashboard/student/completed")}
+          className={btnClasses(
+            isActive("/dashboard/student/completed")
+          )}
+        >
+          Trabajos completados
+        </button>
 
         <button
           onClick={() => navigate("/dashboard/student/profile")}

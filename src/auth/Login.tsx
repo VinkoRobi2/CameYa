@@ -1,4 +1,3 @@
-// src/auth/Login.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
@@ -90,9 +89,7 @@ const Login: React.FC = () => {
           id: String(finalUser.user_id ?? finalUser.id ?? ""),
           name:
             finalUser.nombre || finalUser.apellido
-              ? `${finalUser.nombre ?? ""} ${
-                  finalUser.apellido ?? ""
-                }`.trim()
+              ? `${finalUser.nombre ?? ""} ${finalUser.apellido ?? ""}`.trim()
               : finalUser.name ?? "",
           email: finalUser.email,
           role:
@@ -111,7 +108,8 @@ const Login: React.FC = () => {
 
       if (finalUser) {
         const tipoCuenta = finalUser.tipo_cuenta || finalUser.role;
-        const tipoIdentidad = finalUser.tipo_identidad || finalUser.TipoIdentidad;
+        const tipoIdentidad =
+          finalUser.tipo_identidad || finalUser.TipoIdentidad;
 
         const esEstudiante =
           tipoCuenta === "estudiante" || tipoCuenta === "student";
@@ -141,7 +139,16 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-      <main className="flex-1 flex items-center justify-center px-4 py-10">
+      <main className="relative flex-1 flex items-center justify-center px-4 py-10">
+        {/* Botón volver al inicio */}
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="absolute top-4 left-4 rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold hover:bg-white/10 transition-colors"
+        >
+          ← Volver al inicio
+        </button>
+
         <div className="w-full max-w-md">
           <Reveal>
             <div className="bg-black/40 border border-white/10 rounded-2xl p-6 shadow-xl shadow-black/40">

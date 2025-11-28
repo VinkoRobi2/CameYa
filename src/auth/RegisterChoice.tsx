@@ -18,7 +18,16 @@ const RegisterChoice: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-      <main className="flex-1 flex items-center justify-center px-4 py-10">
+      <main className="relative flex-1 flex items-center justify-center px-4 py-10">
+        {/* Botón volver al inicio */}
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="absolute top-4 left-4 rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold hover:bg-white/10 transition-colors"
+        >
+          ← Volver al inicio
+        </button>
+
         <div className="w-full max-w-3xl space-y-8">
           <Reveal>
             <h1 className="text-3xl md:text-4xl font-semibold text-center">
