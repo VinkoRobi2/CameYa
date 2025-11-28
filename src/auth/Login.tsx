@@ -103,7 +103,7 @@ const Login: React.FC = () => {
         login(normalizedUser);
       }
 
-      // 🔁 Redirección sólo a los "home" de cada dashboard
+      // 🔁 Redirección según tipo de cuenta + perfil_completo
       let redirectTo = "/";
 
       if (finalUser) {
@@ -111,20 +111,39 @@ const Login: React.FC = () => {
         const tipoIdentidad =
           finalUser.tipo_identidad || finalUser.TipoIdentidad;
 
+        // soportar distintos nombres por si el back cambia
+        const perfilCompletoRaw =
+          finalUser.perfil_completo ??
+          finalUser.perfilCompleto ??
+          finalUser.profile_complete;
+        const perfilCompleto = Boolean(perfilCompletoRaw);
+
         const esEstudiante =
           tipoCuenta === "estudiante" || tipoCuenta === "student";
         const esEmpleador =
           tipoCuenta === "empleador" || tipoCuenta === "employer";
 
         if (esEstudiante) {
-          redirectTo = "/dashboard/student";
+          if (!perfilCompleto) {
+            // 🔸 Ruta al flujo de completar perfil de estudiante
+            // AJUSTA esta ruta al path real donde montas el componente de completar perfil de estudiante
+            redirectTo = "/complete-register/student";
+          } else {
+            redirectTo = "/dashboard/student";
+          }
         } else if (esEmpleador) {
-          const isCompany =
-            typeof tipoIdentidad === "string" &&
-            tipoIdentidad.toLowerCase() === "empresa";
-          redirectTo = isCompany
-            ? "/dashboard/employer/company"
-            : "/dashboard/employer/person";
+          if (!perfilCompleto) {
+            // 🔸 Ruta al flujo EmployerCompleteRegister
+            // AJUSTA este path al que tengas en tu App.tsx para <EmployerCompleteRegister />
+            redirectTo = "/complete-register/employer";
+          } else {
+            const isCompany =
+              typeof tipoIdentidad === "string" &&
+              tipoIdentidad.toLowerCase() === "empresa";
+            redirectTo = isCompany
+              ? "/dashboard/employer/company"
+              : "/dashboard/employer/person";
+          }
         }
       }
 
