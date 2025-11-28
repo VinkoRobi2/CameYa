@@ -1,6 +1,6 @@
 import heroVideo from "../../assets/videos/students.mp4";
-import Reveal from "../../ui/Reveal";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 export default function Hero() {
   const navigate = useNavigate();
@@ -11,6 +11,29 @@ export default function Hero() {
 
   const handlePublicarCameYo = () => {
     navigate("/register/employer");
+  };
+
+  // Variantes de animación para el hero (se ejecutan al montar, no por scroll)
+  const containerVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.45,
+        ease: [0.16, 1, 0.3, 1],
+        staggerChildren: 0.08,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 18 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+    },
   };
 
   return (
@@ -25,37 +48,47 @@ export default function Hero() {
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70" />
 
-      <div className="relative z-10 text-center text-white px-4">
-        <Reveal>
-          <h1 className="font-display text-5xl md:text-6xl font-semibold leading-tight tracking-tight">
-            El trabajo flash que necesitas,<br /> cuando lo necesitas.
-          </h1>
-        </Reveal>
-        <Reveal>
-          <p className="mt-4 text-lg max-w-2xl mx-auto text-gray-200">
-            Conecta estudiantes y jóvenes con empleos de corta duración: rápido, seguro,
-            flexible y joven.
-          </p>
-        </Reveal>
-        <div className="mt-8 flex justify-center gap-4 flex-wrap">
-          <Reveal>
-            <button
-              onClick={handleBuscarCameYo}
-              className="h-12 px-6 rounded-full bg-primary text-white font-semibold hover:opacity-90 transition-opacity"
-            >
-              Buscar CameYo
-            </button>
-          </Reveal>
-          <Reveal>
-            <button
-              onClick={handlePublicarCameYo}
-              className="h-12 px-6 rounded-full bg-white text-black font-semibold hover:bg-gray-200 transition-colors"
-            >
-              Publicar CameYo
-            </button>
-          </Reveal>
-        </div>
-      </div>
+      <motion.div
+        className="relative z-10 text-center text-white px-4"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.h1
+          variants={itemVariants}
+          className="font-display text-5xl md:text-6xl font-semibold leading-tight tracking-tight"
+        >
+          El trabajo flash que necesitas,
+          <br />
+          cuando lo necesitas.
+        </motion.h1>
+
+        <motion.p
+          variants={itemVariants}
+          className="mt-4 text-lg max-w-2xl mx-auto text-gray-200"
+        >
+          Conecta estudiantes y jóvenes con empleos de corta duración:
+          rápido, seguro, flexible y joven.
+        </motion.p>
+
+        <motion.div
+          variants={itemVariants}
+          className="mt-8 flex justify-center gap-4 flex-wrap"
+        >
+          <button
+            onClick={handleBuscarCameYo}
+            className="h-12 px-6 rounded-full bg-primary text-white font-semibold hover:opacity-90 transition-opacity"
+          >
+            Buscar CameYo
+          </button>
+          <button
+            onClick={handlePublicarCameYo}
+            className="h-12 px-6 rounded-full bg-white text-black font-semibold hover:bg-gray-200 transition-colors"
+          >
+            Publicar CameYo
+          </button>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }
