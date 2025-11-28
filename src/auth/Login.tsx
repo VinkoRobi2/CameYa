@@ -135,7 +135,7 @@ const Login: React.FC = () => {
           if (!perfilCompleto) {
             // 🔸 Ruta al flujo EmployerCompleteRegister
             // AJUSTA este path al que tengas en tu App.tsx para <EmployerCompleteRegister />
-            redirectTo = "/complete-register/employer";
+            redirectTo = "/register/employer/complete";
           } else {
             const isCompany =
               typeof tipoIdentidad === "string" &&
