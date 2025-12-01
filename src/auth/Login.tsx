@@ -125,16 +125,13 @@ const Login: React.FC = () => {
 
         if (esEstudiante) {
           if (!perfilCompleto) {
-            // 🔸 Ruta al flujo de completar perfil de estudiante
-            // AJUSTA esta ruta al path real donde montas el componente de completar perfil de estudiante
-            redirectTo = "/complete-register/student";
+            // ✅ Ruta correcta al flujo de completar perfil de estudiante
+            redirectTo = "/register/student/complete";
           } else {
             redirectTo = "/dashboard/student";
           }
         } else if (esEmpleador) {
           if (!perfilCompleto) {
-            // 🔸 Ruta al flujo EmployerCompleteRegister
-            // AJUSTA este path al que tengas en tu App.tsx para <EmployerCompleteRegister />
             redirectTo = "/register/employer/complete";
           } else {
             const isCompany =
