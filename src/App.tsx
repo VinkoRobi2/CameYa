@@ -1,10 +1,6 @@
 // src/App.tsx
 import React from "react";
-import {
-  Routes,
-  Route,
-  useLocation,
-} from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 
 import TermsAndPriv from "./global/pages/Terms&Priv";
@@ -27,10 +23,10 @@ import StudentApplications from "./auth/studentDashboard/StudentApplications";
 import StudentCompletedJobs from "./auth/studentDashboard/StudentCompletedJobs";
 
 import EmployerStudentsHome from "./auth/employerDashboard/EmployerStudentsHome";
-import EmployerPersonHome from "./auth/employerDashboard/EmployerPersonHome";
-import EmployerCompanyHome from "./auth/employerDashboard/EmployerCompanyHome";
 import EmployerCreateJob from "./auth/employerDashboard/EmployerCreateJob";
 import EmployerPosts from "./auth/employerDashboard/EmployerPosts";
+import EmployerHistory from "./auth/employerDashboard/EmployerHistory";
+import EmployerProfile from "./auth/employerDashboard/EmployerProfile";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 
@@ -171,7 +167,7 @@ const AnimatedRoutes: React.FC = () => {
           }
         />
 
-        {/* Dashboards protegidos (empleador) */}
+        {/* Dashboards protegidos (empleador) - HOME: swipeo de estudiantes */}
         <Route
           path="/dashboard/employer/person"
           element={
@@ -193,13 +189,13 @@ const AnimatedRoutes: React.FC = () => {
           }
         />
 
-        {/* Mi perfil (empleador) */}
+        {/* Perfil empleador (persona / empresa) */}
         <Route
           path="/dashboard/employer/person/profile"
           element={
             <ProtectedRoute allowedRoles={["employer"]}>
               <PageTransition>
-                <EmployerPersonHome />
+                <EmployerProfile />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -209,7 +205,7 @@ const AnimatedRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={["employer"]}>
               <PageTransition>
-                <EmployerCompanyHome />
+                <EmployerProfile />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -244,6 +240,28 @@ const AnimatedRoutes: React.FC = () => {
             <ProtectedRoute allowedRoles={["employer"]}>
               <PageTransition>
                 <EmployerCreateJob />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Historial de CameYos (empleadores) */}
+        <Route
+          path="/dashboard/employer/person/history"
+          element={
+            <ProtectedRoute allowedRoles={["employer"]}>
+              <PageTransition>
+                <EmployerHistory />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/employer/company/history"
+          element={
+            <ProtectedRoute allowedRoles={["employer"]}>
+              <PageTransition>
+                <EmployerHistory />
               </PageTransition>
             </ProtectedRoute>
           }

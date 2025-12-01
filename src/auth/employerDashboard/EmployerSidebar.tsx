@@ -64,9 +64,11 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
       {/* SIDEBAR */}
       <aside
         className={[
+          // móvil: fixed, full height
           "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-200",
           isOpen ? "translate-x-0" : "-translate-x-full",
-          "md:static md:translate-x-0", // siempre visible en desktop
+          // desktop: estático, siempre visible y ocupando toda la pantalla vertical
+          "md:static md:translate-x-0 md:h-screen",
         ].join(" ")}
       >
         <div className="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
@@ -98,7 +100,7 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
             Publicar nuevo CameYo
           </button>
 
-          {/* Rutas placeholder para el futuro */}
+          {/* Mis publicaciones */}
           <button
             onClick={() => handleNavigate(`${baseDashboardPath}/posts`)}
             className={buttonClasses(isActive(`${baseDashboardPath}/posts`))}
@@ -106,6 +108,7 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
             Mis publicaciones
           </button>
 
+          {/* Historial */}
           <button
             onClick={() => handleNavigate(`${baseDashboardPath}/history`)}
             className={buttonClasses(isActive(`${baseDashboardPath}/history`))}
@@ -113,6 +116,7 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
             Historial de CameYos
           </button>
 
+          {/* Perfil */}
           <button
             onClick={() => handleNavigate(`${baseDashboardPath}/profile`)}
             className={buttonClasses(isActive(`${baseDashboardPath}/profile`))}
