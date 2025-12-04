@@ -1,4 +1,3 @@
-// src/auth/StudentRegister.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
@@ -12,12 +11,6 @@ const StudentRegister: React.FC = () => {
     apellido: "",
     email: "",
     password: "",
-    cedula: "",
-    telefono: "",
-    fechaNacimiento: "",
-    universidad: "",
-    carrera: "",
-    disponibilidad: "",
     terminosAceptados: false,
   });
 
@@ -25,9 +18,9 @@ const StudentRegister: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const { name, value, type, checked } = e.target as HTMLInputElement;
+    const { name, value, type, checked } = e.target;
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -46,36 +39,35 @@ const StudentRegister: React.FC = () => {
     setLoading(true);
 
     try {
-      // JSON EXACTO QUE ESPERA RegisterUser (registro parcial)
       const payload = {
+        // Campos principales de registro rápido
         nombre: form.nombre,
         apellido: form.apellido,
         email: form.email,
         password: form.password,
         tipo_cuenta: "estudiante",
 
-        // Campos que por ahora no usas o quedan vacíos en registro parcial
+        // Resto de campos que el backend espera, pero vacíos por ahora
         cedula_ruc: "",
-        cedula: form.cedula,
-        telefono: form.telefono,
-        fecha_nacimiento: form.fechaNacimiento,
-        ciudad: "", // tu backend usa "Guayaquil" por defecto
+        cedula: "",
+        telefono: "",
+        fecha_nacimiento: "",
+        ciudad: "",
         ubicacion: "",
         institucion_educativa: "",
-
-        carrera: form.carrera,
-        universidad: form.universidad,
-        disponibilidad_de_tiempo: form.disponibilidad,
+        carrera: "",
+        universidad: "",
+        disponibilidad_de_tiempo: "",
 
         foto_perfil: "",
         nivel_actual: "",
         terminos_aceptados: form.terminosAceptados,
 
-        // Solo para empleadores (null en estudiantes)
-        tipo_identidad: null,
+        // Campos compartidos con empleador, se mandan neutros
+        tipo_identidad: "Persona",
         preferencias_categorias: null,
-        dominio_corporativo: null,
-        razon_social: null,
+        dominio_corporativo: "",
+        razon_social: "",
       };
 
       const res = await fetch(`${API_BASE_URL}/register`, {
@@ -94,7 +86,7 @@ const StudentRegister: React.FC = () => {
         return;
       }
 
-      // Si todo sale bien -> pantalla "revisa tu correo"
+      // Pantalla de "revisa tu correo" (ajusta la ruta si ya usas otra)
       navigate("/register/student/check-email", {
         state: { email: form.email },
         replace: true,
@@ -108,17 +100,16 @@ const StudentRegister: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-background-light text-foreground-light dark:bg-background-dark dark:text-foreground-dark flex flex-col">
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           <Reveal>
-            <div className="bg-white/90 border border-slate-200 rounded-2xl p-6 shadow-xl">
-              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2 text-slate-900">
-                Regístrate como estudiante
+            <div className="bg-white/95 dark:bg-background-dark/95 border border-primary/10 rounded-2xl p-6 shadow-xl">
+              <h1 className="text-2xl md:text-3xl font-semibold text-center mb-2">
+                Crea tu cuenta estudiante
               </h1>
-              <p className="text-sm text-slate-600 text-center mb-6">
-                Primero registra tu correo .edu.ec. Luego lo verificas desde el
-                mail y completas tu perfil.
+              <p className="text-sm text-foreground-light/70 dark:text-foreground-dark/70 text-center mb-6">
+                Regístrate en segundos para empezar a postular a CameYos.
               </p>
 
               {error && (
@@ -131,7 +122,7 @@ const StudentRegister: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1 text-slate-800"
+                      className="block text-sm font-medium mb-1"
                       htmlFor="nombre"
                     >
                       Nombre
@@ -143,12 +134,12 @@ const StudentRegister: React.FC = () => {
                       required
                       value={form.nombre}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
+                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                   <div>
                     <label
-                      className="block text-sm font-medium mb-1 text-slate-800"
+                      className="block text-sm font-medium mb-1"
                       htmlFor="apellido"
                     >
                       Apellido
@@ -160,17 +151,17 @@ const StudentRegister: React.FC = () => {
                       required
                       value={form.apellido}
                       onChange={handleChange}
-                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
+                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1 text-slate-800"
+                    className="block text-sm font-medium mb-1"
                     htmlFor="email"
                   >
-                    Correo institucional (.edu.ec)
+                    Correo electrónico
                   </label>
                   <input
                     id="email"
@@ -179,13 +170,16 @@ const StudentRegister: React.FC = () => {
                     required
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
+                    className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   />
+                  <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
+                    Te enviaremos un correo para verificar tu cuenta.
+                  </p>
                 </div>
 
                 <div>
                   <label
-                    className="block text-sm font-medium mb-1 text-slate-800"
+                    className="block text-sm font-medium mb-1"
                     htmlFor="password"
                   >
                     Contraseña
@@ -197,130 +191,18 @@ const StudentRegister: React.FC = () => {
                     required
                     value={form.password}
                     onChange={handleChange}
-                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
+                    className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1 text-slate-800"
-                      htmlFor="cedula"
-                    >
-                      Cédula
-                    </label>
-                    <input
-                      id="cedula"
-                      name="cedula"
-                      type="text"
-                      value={form.cedula}
-                      onChange={handleChange}
-                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1 text-slate-800"
-                      htmlFor="telefono"
-                    >
-                      Teléfono
-                    </label>
-                    <input
-                      id="telefono"
-                      name="telefono"
-                      type="tel"
-                      value={form.telefono}
-                      onChange={handleChange}
-                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1 text-slate-800"
-                    htmlFor="fechaNacimiento"
-                  >
-                    Fecha de nacimiento
-                  </label>
-                  <input
-                    id="fechaNacimiento"
-                    name="fechaNacimiento"
-                    type="date"
-                    value={form.fechaNacimiento}
-                    onChange={handleChange}
-                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1 text-slate-800"
-                      htmlFor="universidad"
-                    >
-                      Universidad
-                    </label>
-                    <input
-                      id="universidad"
-                      name="universidad"
-                      type="text"
-                      value={form.universidad}
-                      onChange={handleChange}
-                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1 text-slate-800"
-                      htmlFor="carrera"
-                    >
-                      Carrera
-                    </label>
-                    <input
-                      id="carrera"
-                      name="carrera"
-                      type="text"
-                      value={form.carrera}
-                      onChange={handleChange}
-                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1 text-slate-800"
-                    htmlFor="disponibilidad"
-                  >
-                    Disponibilidad de tiempo
-                  </label>
-                  <select
-                    id="disponibilidad"
-                    name="disponibilidad"
-                    value={form.disponibilidad}
-                    onChange={handleChange}
-                    className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-[#0A5FE3] focus:ring-2 focus:ring-[#0A5FE3]/15"
-                  >
-                    <option value="">Selecciona una opción</option>
-                    <option value="solo fines de semana">
-                      Solo fines de semana
-                    </option>
-                    <option value="entre semana y fines de semana">
-                      Entre semana y fines de semana
-                    </option>
-                    <option value="turnos flexibles">Turnos flexibles</option>
-                  </select>
-                </div>
-
-                <div className="flex items-start gap-2 text-xs text-slate-600">
+                <div className="flex items-start gap-2 text-xs text-foreground-light/80 dark:text-foreground-dark/80">
                   <input
                     id="terminosAceptados"
                     name="terminosAceptados"
                     type="checkbox"
                     checked={form.terminosAceptados}
                     onChange={handleChange}
-                    className="mt-1 accent-[#00A14D]"
+                    className="mt-1 accent-primary"
                   />
                   <label htmlFor="terminosAceptados">
                     He leído y acepto los términos, condiciones y el uso de mis
@@ -331,7 +213,7 @@ const StudentRegister: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 rounded-full bg-[#0A5FE3] text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-11 rounded-full bg-primary text-white text-sm font-semibold hover:brightness-110 active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                 >
                   {loading ? "Registrando..." : "Registrarme"}
                 </button>
