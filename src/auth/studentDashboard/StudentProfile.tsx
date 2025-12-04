@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../global/AuthContext";
 import API_BASE_URL from "../../global/ApiBase";
 import StudentSidebar from "./StudentSidebar";
+import StudentProfileHeader from "./StudentProfileHeader";
 
 const StudentProfile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -69,6 +70,7 @@ const StudentProfile: React.FC = () => {
 
         setProfile(data);
 
+        // Actualiza auth_user en localStorage con los nuevos datos
         try {
           const prevStr = localStorage.getItem("auth_user");
           const prev = prevStr ? JSON.parse(prevStr) : {};
@@ -92,6 +94,7 @@ const StudentProfile: React.FC = () => {
 
   const data = profile || localExtra || {};
 
+  // Nombre a mostrar
   const displayName =
     (data.nombre || data.apellido
       ? `${data.nombre ?? ""} ${data.apellido ?? ""}`.trim()
@@ -99,24 +102,31 @@ const StudentProfile: React.FC = () => {
     user?.name ||
     "Estudiante CameYa";
 
-  const subtitleParts: string[] = [];
-  if (data.titulo_perfil) subtitleParts.push(data.titulo_perfil);
+  // Subtítulo: carrera + universidad si existen
+  let subtitle = "";
   if (data.carrera && data.universidad) {
-    subtitleParts.push(`${data.carrera} en ${data.universidad}`);
+    subtitle = `${data.carrera} en ${data.universidad}`;
+  } else if (data.carrera) {
+    subtitle = data.carrera;
+  } else if (data.universidad) {
+    subtitle = String(data.universidad);
+  } else {
+    subtitle = "Estudiante universitario CameYa";
   }
-  const subtitle =
-    subtitleParts.join(" · ") || "Estudiante universitario CameYa";
 
+  // Bio
   const bio =
     data.biografia ||
     data.bibiografia ||
     "Aquí irá tu biografía completa. En cuanto se vaya enriqueciendo tu perfil, se mostrará aquí.";
 
+  // Disponibilidad
   const availability =
     data.disponibilidad_de_tiempo ||
     data.disponibilidad ||
     "Solo fines de semana";
 
+  // Habilidades (text[] o string)
   const habilidadesRaw = data.habilidades_basicas ?? data.habilidades ?? [];
   const habilidadesList: string[] = Array.isArray(habilidadesRaw)
     ? habilidadesRaw
@@ -131,18 +141,7 @@ const StudentProfile: React.FC = () => {
         .map((s: string) => cleanItem(s))
         .filter((s: string) => s.length > 0);
 
-  const sectoresRaw =
-    data.sectores_preferencias ?? data.sector_preferencias ?? [];
-  const sectoresList: string[] = Array.isArray(sectoresRaw)
-    ? sectoresRaw
-        .flatMap((item: any) =>
-          String(item)
-            .split(/[,|\n]/)
-            .map((s) => cleanItem(s))
-        )
-        .filter((s: string) => s.length > 0)
-    : [];
-
+  // Links (string o array)
   const linksRaw = data.links;
   const links: string[] = Array.isArray(linksRaw)
     ? linksRaw
@@ -155,6 +154,7 @@ const StudentProfile: React.FC = () => {
         .filter((s: string) => s.length > 0)
     : [];
 
+  // Iniciales y foto de perfil
   const initials = displayName
     .split(" ")
     .filter(Boolean)
@@ -162,6 +162,11 @@ const StudentProfile: React.FC = () => {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  const photoUrl: string | null =
+    (typeof data.foto_perfil === "string" && data.foto_perfil.length > 0
+      ? data.foto_perfil
+      : null) || null;
 
   const handleLogout = () => {
     logout();
@@ -187,26 +192,13 @@ const StudentProfile: React.FC = () => {
           </div>
         )}
 
-        {/* Header de perfil */}
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold text-xl">
-              {initials || "ST"}
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold">{displayName}</h1>
-              <p className="text-sm text-slate-500">{subtitle}</p>
-              <p className="text-xs text-slate-400 mt-1">
-                Esta es la info que verán los empleadores cuando revisen tu
-                perfil.
-              </p>
-            </div>
-          </div>
-
-          <button className="self-start md:self-auto px-4 py-2 rounded-full bg-primary text-white text-sm font-medium hover:opacity-90">
-            Editar perfil
-          </button>
-        </section>
+        {/* Header de perfil con imagen si viene en el response */}
+        <StudentProfileHeader
+          initials={initials}
+          displayName={displayName}
+          subtitle={subtitle}
+          photoUrl={photoUrl}
+        />
 
         {/* Métricas placeholder */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -228,28 +220,50 @@ const StudentProfile: React.FC = () => {
           </div>
         </section>
 
-        {/* Sobre mí + disponibilidad */}
+        {/* Sobre mí + disponibilidad + datos básicos */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-5 lg:col-span-2">
             <h2 className="text-sm font-semibold mb-2">Sobre mí</h2>
-            <p className="text-sm text-slate-600 leading-relaxed">{bio}</p>
+            <p className="text-sm text-slate-600 leading-relaxed mb-3">{bio}</p>
+
+            <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+              {data.ciudad && (
+                <span className="px-2 py-1 rounded-full bg-slate-100 border border-slate-200">
+                  📍 {data.ciudad}
+                </span>
+              )}
+              {data.universidad && (
+                <span className="px-2 py-1 rounded-full bg-slate-100 border border-slate-200">
+                  🎓 {data.universidad}
+                </span>
+              )}
+              {data.carrera && (
+                <span className="px-2 py-1 rounded-full bg-slate-100 border border-slate-200">
+                  📚 {data.carrera}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <h2 className="text-sm font-semibold mb-2">Disponibilidad</h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mb-2">
               <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
                 {availability}
               </span>
             </div>
+            <p className="text-[11px] text-slate-500">
+              Esta información se muestra a los empleadores para que sepan
+              cuándo puedes trabajar.
+            </p>
           </div>
         </section>
 
-        {/* Habilidades + sectores + links */}
+        {/* Habilidades + links */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <h2 className="text-sm font-semibold mb-3">Habilidades</h2>
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex flex-wrap gap-2 mb-1">
               {habilidadesList.map((skill) => (
                 <span
                   key={skill}
@@ -264,24 +278,6 @@ const StudentProfile: React.FC = () => {
                 </p>
               )}
             </div>
-
-            {sectoresList.length > 0 && (
-              <>
-                <h3 className="text-xs font-semibold mb-2">
-                  Sectores preferidos
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {sectoresList.map((sec) => (
-                    <span
-                      key={sec}
-                      className="px-3 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium"
-                    >
-                      {sec}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-5">

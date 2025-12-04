@@ -1,10 +1,20 @@
 // src/auth/StudentCompleteRegister.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
 import API_BASE_URL from "../global/ApiBase";
 
 const stepsTotal = 3;
+
+type StoredUserData = {
+  nombre?: string;
+  apellido?: string;
+  email?: string;
+  ciudad?: string;
+  carrera?: string;
+  universidad?: string;
+  foto_perfil?: string;
+};
 
 const StudentCompleteRegister: React.FC = () => {
   const navigate = useNavigate();
@@ -13,20 +23,34 @@ const StudentCompleteRegister: React.FC = () => {
 
   const [form, setForm] = useState({
     ciudad: "",
-    sectorPreferencias: "",
+    telefono: "",
+    carrera: "",
+    universidad: "",
+    disponibilidad: "", // disponibilidad_de_tiempo
     habilidadesBasicas: "",
-    tituloPerfil: "",
     biografia: "",
     links: "",
-    fotoPerfil: "", // URL opcional que ya tenías
-    fotoPerfilBase64: "", // NUEVO: base64 real que se envía al backend
+    fotoPerfil: "", // URL opcional
+    fotoPerfilBase64: "", // imagen real que se envía al backend
   });
 
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
-
+  const [userData, setUserData] = useState<StoredUserData | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Cargar datos básicos guardados en localStorage para mostrar en la card
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user_data");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as any;
+      setUserData(parsed);
+    } catch (e) {
+      console.error("No se pudo leer user_data de localStorage", e);
+    }
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -43,6 +67,10 @@ const StudentCompleteRegister: React.FC = () => {
     if (step === 0) {
       if (!form.ciudad.trim()) {
         setError("Indica al menos tu ciudad.");
+        return;
+      }
+      if (!form.universidad.trim()) {
+        setError("Indica tu universidad.");
         return;
       }
     }
@@ -79,7 +107,6 @@ const StudentCompleteRegister: React.FC = () => {
       const result = reader.result as string;
       if (!result) return;
 
-      // result viene como "data:image/png;base64,AAAA..."
       const base64 = result.split(",")[1] || "";
       setFotoPreview(result);
       setForm((prev) => ({
@@ -90,6 +117,12 @@ const StudentCompleteRegister: React.FC = () => {
     };
     reader.readAsDataURL(file);
   };
+
+  const parseList = (raw: string): string[] =>
+    raw
+      .split(/[,|\n]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
   // Se llama SOLO desde el botón "Guardar y finalizar"
   const handleSubmit = async () => {
@@ -108,26 +141,23 @@ const StudentCompleteRegister: React.FC = () => {
         return;
       }
 
-      // ---- Adaptar datos al formato que espera el backend ----
-      const parseList = (raw: string): string[] =>
-        raw
-          .split(/[,|\n]/)
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-
-      const sectorArray = parseList(form.sectorPreferencias); // []string
       const habilidadesArray = parseList(form.habilidadesBasicas); // []string
       const linksArray = parseList(form.links); // []string
 
       const payload = {
-        titulo_perfil: form.tituloPerfil, // string
-        sector_preferencias: sectorArray, // []string
-        habilidades: habilidadesArray, // []string
-        foto_perfil_base64: form.fotoPerfilBase64 || "", // NUEVO → backend ProfileUpdateRequest.FotoPerfilBase64
-        disponibilidad: "no_especificado", // string requerido por backend
-        biografia: form.biografia, // string
-        links: linksArray, // []string
-        perfil_completo: true, // bool (el backend calcula su propio profileComplete igualmente)
+        ciudad: form.ciudad,
+        telefono: form.telefono,
+        carrera: form.carrera,
+        universidad: form.universidad,
+        habilidades: habilidadesArray,
+        foto_perfil_base64: form.fotoPerfilBase64 || "",
+        disponibilidad:
+          form.disponibilidad && form.disponibilidad.length > 0
+            ? form.disponibilidad
+            : "no_especificado",
+        biografia: form.biografia,
+        links: linksArray,
+        perfil_completo: true,
       };
 
       const res = await fetch(`${API_BASE_URL}/protected/completar-perfil`, {
@@ -167,10 +197,35 @@ const StudentCompleteRegister: React.FC = () => {
 
   const progress = ((step + 1) / stepsTotal) * 100;
 
+  // Datos para la card de vista previa
+  const previewNombre =
+    (userData?.nombre || "Tu nombre") +
+    (userData?.apellido ? ` ${userData.apellido}` : "");
+
+  const previewCiudad =
+    form.ciudad.trim().length > 0
+      ? form.ciudad
+      : userData?.ciudad || "Ciudad";
+
+  const previewUniversidad =
+    form.universidad.trim().length > 0
+      ? form.universidad
+      : userData?.universidad || "Universidad";
+
+  const previewCarrera =
+    form.carrera.trim().length > 0
+      ? form.carrera
+      : userData?.carrera || "";
+
+  const skills = parseList(form.habilidadesBasicas).slice(0, 6);
+  const linksPreview = parseList(form.links);
+  const fotoCard =
+    fotoPreview || form.fotoPerfil || userData?.foto_perfil || null;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <main className="flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-3xl">
           <Reveal>
             <div className="bg-white/90 border border-slate-200 rounded-2xl p-6 shadow-xl">
               {/* Header */}
@@ -190,8 +245,9 @@ const StudentCompleteRegister: React.FC = () => {
                 Completa tu perfil
               </h1>
               <p className="text-sm text-slate-600 text-center mb-6">
-                Ya verificaste tu correo. Ahora termina estos pasos para que
-                CameYa pueda recomendarte los mejores CameYos para ti.
+                Ya verificaste tu correo. Completa estos pasos para que tu
+                perfil se vea atractivo para los empleadores y podamos
+                recomendarte los mejores CameYos.
               </p>
 
               {error && (
@@ -205,47 +261,112 @@ const StudentCompleteRegister: React.FC = () => {
                 </p>
               )}
 
-              {/* Sin onSubmit: solo contenedor visual */}
+              {/* FORMULARIO MULTIPASO */}
               <form className="space-y-6">
-                {/* SLIDE 1: Ciudad + sector preferencias */}
+                {/* SLIDE 1: Datos básicos académicos + disponibilidad */}
                 {step === 0 && (
                   <div className="space-y-4">
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1 text-slate-800"
-                        htmlFor="ciudad"
-                      >
-                        Ciudad
-                      </label>
-                      <input
-                        id="ciudad"
-                        name="ciudad"
-                        type="text"
-                        value={form.ciudad}
-                        onChange={handleChange}
-                        placeholder="Ej. Guayaquil"
-                        className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label
+                          className="block text-sm font-medium mb-1 text-slate-800"
+                          htmlFor="ciudad"
+                        >
+                          Ciudad
+                        </label>
+                        <input
+                          id="ciudad"
+                          name="ciudad"
+                          type="text"
+                          value={form.ciudad}
+                          onChange={handleChange}
+                          placeholder="Ej. Guayaquil"
+                          className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          className="block text-sm font-medium mb-1 text-slate-800"
+                          htmlFor="telefono"
+                        >
+                          Teléfono (opcional)
+                        </label>
+                        <input
+                          id="telefono"
+                          name="telefono"
+                          type="tel"
+                          value={form.telefono}
+                          onChange={handleChange}
+                          placeholder="Ej. 0991234567"
+                          className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label
+                          className="block text-sm font-medium mb-1 text-slate-800"
+                          htmlFor="universidad"
+                        >
+                          Universidad
+                        </label>
+                        <input
+                          id="universidad"
+                          name="universidad"
+                          type="text"
+                          value={form.universidad}
+                          onChange={handleChange}
+                          placeholder="Ej. ESPOL"
+                          className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          className="block text-sm font-medium mb-1 text-slate-800"
+                          htmlFor="carrera"
+                        >
+                          Carrera (opcional)
+                        </label>
+                        <input
+                          id="carrera"
+                          name="carrera"
+                          type="text"
+                          value={form.carrera}
+                          onChange={handleChange}
+                          placeholder="Ej. Economía"
+                          className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                      </div>
                     </div>
 
                     <div>
                       <label
                         className="block text-sm font-medium mb-1 text-slate-800"
-                        htmlFor="sectorPreferencias"
+                        htmlFor="disponibilidad"
                       >
-                        Sectores o tipos de CameYos que prefieres
+                        Disponibilidad de tiempo
                       </label>
-                      <input
-                        id="sectorPreferencias"
-                        name="sectorPreferencias"
-                        type="text"
-                        value={form.sectorPreferencias}
+                      <select
+                        id="disponibilidad"
+                        name="disponibilidad"
+                        value={form.disponibilidad}
                         onChange={handleChange}
-                        placeholder="Ej. eventos, tecnología, atención al cliente... (separa por comas)"
                         className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
+                      >
+                        <option value="">Selecciona una opción</option>
+                        <option value="fines_de_semana">
+                          Solo fines de semana
+                        </option>
+                        <option value="tardes">Tardes entre semana</option>
+                        <option value="mañanas">Mañanas entre semana</option>
+                        <option value="flexible">Horario flexible</option>
+                      </select>
                       <p className="text-[11px] text-slate-500 mt-1">
-                        Escribe palabras clave separadas por comas.
+                        Esto ayuda a los empleadores a saber en qué momentos
+                        puedes trabajar.
                       </p>
                     </div>
                   </div>
@@ -272,32 +393,15 @@ const StudentCompleteRegister: React.FC = () => {
                       />
                       <p className="text-[11px] text-slate-500 mt-1">
                         Usa comas o saltos de línea para separar habilidades.
+                        Estas aparecerán como tags en tu card.
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* SLIDE 3: Título, bio, links y foto */}
+                {/* SLIDE 3: Bio, links y foto */}
                 {step === 2 && (
                   <div className="space-y-4">
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1 text-slate-800"
-                        htmlFor="tituloPerfil"
-                      >
-                        Título de perfil
-                      </label>
-                      <input
-                        id="tituloPerfil"
-                        name="tituloPerfil"
-                        type="text"
-                        value={form.tituloPerfil}
-                        onChange={handleChange}
-                        placeholder="Ej. Estudiante de economía con enfoque en análisis de datos"
-                        className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    </div>
-
                     <div>
                       <label
                         className="block text-sm font-medium mb-1 text-slate-800"
@@ -334,7 +438,7 @@ const StudentCompleteRegister: React.FC = () => {
                       />
                     </div>
 
-                    {/* FOTO DE PERFIL: archivo / cámara + preview */}
+                    {/* FOTO DE PERFIL */}
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-slate-800">
                         Foto de perfil (opcional)
@@ -342,9 +446,9 @@ const StudentCompleteRegister: React.FC = () => {
 
                       <div className="flex items-center gap-3">
                         <div className="h-16 w-16 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center text-xs text-slate-500">
-                          {fotoPreview || form.fotoPerfil ? (
+                          {fotoCard ? (
                             <img
-                              src={fotoPreview || form.fotoPerfil}
+                              src={fotoCard}
                               alt="Foto de perfil"
                               className="h-full w-full object-cover"
                             />
@@ -357,7 +461,6 @@ const StudentCompleteRegister: React.FC = () => {
                           <input
                             type="file"
                             accept="image/*"
-                            // En mobile abre cámara/galería
                             capture="environment"
                             onChange={handleFileChange}
                             className="block w-full text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:opacity-90"
@@ -386,8 +489,8 @@ const StudentCompleteRegister: React.FC = () => {
                           className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                         />
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Si también subes una imagen, se usará la foto
-                          subida para tu perfil (base64 → servidor).
+                          Si también subes una imagen, se usará la foto subida
+                          para tu perfil (base64 → servidor).
                         </p>
                       </div>
                     </div>
@@ -426,6 +529,115 @@ const StudentCompleteRegister: React.FC = () => {
                   )}
                 </div>
               </form>
+
+              {/* VISTA PREVIA - TINDER STYLE CARD AL FINAL (solo paso 3) */}
+              {step === 2 && (
+                <div className="mt-8">
+                  <p className="text-xs font-medium text-slate-500 mb-2 text-center">
+                    Vista previa de cómo verán tu perfil los empleadores
+                  </p>
+                  <div className="flex justify-center">
+                    <div className="relative">
+                      <div className="absolute -top-4 -left-3 h-6 w-10 rounded-full bg-slate-200 blur-xl opacity-60" />
+                      <div className="absolute -bottom-5 -right-4 h-10 w-14 rounded-full bg-primary/30 blur-xl opacity-80" />
+
+                      <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4 shadow-2xl max-w-sm mx-auto transform rotate-[-2deg]">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-14 w-14 rounded-2xl bg-slate-700 overflow-hidden flex items-center justify-center text-sm font-semibold">
+                              {fotoCard ? (
+                                <img
+                                  src={fotoCard}
+                                  alt="Foto perfil preview"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span>
+                                  {previewNombre
+                                    .split(" ")
+                                    .map((p) => p[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <h2 className="text-base font-semibold leading-tight">
+                                {previewNombre}
+                              </h2>
+                              <p className="text-[11px] text-slate-200/80 line-clamp-1">
+                                {previewCarrera
+                                  ? previewCarrera
+                                  : "Estudiante universitario"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1 items-end text-[10px] text-slate-300">
+                            <span className="px-2 py-1 rounded-full bg-slate-800/70 border border-slate-700">
+                              {previewCiudad}
+                            </span>
+                            <span className="px-2 py-1 rounded-full bg-slate-800/70 border border-slate-700 line-clamp-1 max-w-[8rem]">
+                              {previewUniversidad}
+                            </span>
+                          </div>
+                        </div>
+
+                        {form.biografia.trim().length > 0 && (
+                          <p className="text-[11px] text-slate-100/90 mb-3 line-clamp-3">
+                            {form.biografia}
+                          </p>
+                        )}
+
+                        {skills.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+                              Habilidades
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {skills.map((skill) => (
+                                <span
+                                  key={skill}
+                                  className="px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-[10px]"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {linksPreview.length > 0 && (
+                          <div className="mt-1">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+                              Links
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {linksPreview.slice(0, 3).map((link) => (
+                                <span
+                                  key={link}
+                                  className="px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700 text-[9px] max-w-[10rem] truncate"
+                                >
+                                  {link.replace(/^https?:\/\//, "")}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex items-center justify-center gap-6">
+                          <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-600 text-xs">
+                            ✕
+                          </div>
+                          <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center shadow-lg text-sm">
+                            ♥
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </Reveal>
         </div>
