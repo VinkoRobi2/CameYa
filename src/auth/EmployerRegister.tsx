@@ -1,25 +1,18 @@
+// src/auth/EmployerRegister.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
 import API_BASE_URL from "../global/ApiBase";
 
-type TipoIdentidad = "Persona" | "Empresa";
-
 const EmployerRegister: React.FC = () => {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    tipoIdentidad: "Persona" as TipoIdentidad,
     nombre: "",
     apellido: "",
     email: "",
     password: "",
-    cedulaRuc: "",
-    telefono: "",
-    fechaNacimiento: "",
-    ciudad: "",
-    razonSocial: "",
-    dominioCorporativo: "",
+    telefono: "", // WhatsApp
     terminosAceptados: false,
   });
 
@@ -27,9 +20,9 @@ const EmployerRegister: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const { name, value, type, checked } = e.target as HTMLInputElement;
+    const { name, value, type, checked } = e.target;
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -49,34 +42,31 @@ const EmployerRegister: React.FC = () => {
 
     try {
       const payload = {
+        // Datos que el usuario llena
         nombre: form.nombre,
         apellido: form.apellido,
         email: form.email,
         password: form.password,
         tipo_cuenta: "empleador",
 
-        cedula_ruc: form.cedulaRuc,
-        cedula: "",
+        // Usamos teléfono como WhatsApp
         telefono: form.telefono,
-        fecha_nacimiento: form.fechaNacimiento,
-        ciudad: form.ciudad || "Guayaquil",
-        ubicacion: "",
-        institucion_educativa: "",
 
-        carrera: "",
-        universidad: "",
-        disponibilidad_de_tiempo: "",
-
+        // Valores por defecto / mínimos para no romper el backend
+        cedula_ruc: "",
+        ciudad: "Guayaquil",
         foto_perfil: "",
-        nivel_actual: "",
         terminos_aceptados: form.terminosAceptados,
 
-        tipo_identidad: form.tipoIdentidad,
-        preferencias_categorias: null,
-        dominio_corporativo:
-          form.tipoIdentidad === "Empresa" ? form.dominioCorporativo : "",
-        razon_social:
-          form.tipoIdentidad === "Empresa" ? form.razonSocial : "",
+        // Identidad por defecto: persona natural
+        tipo_identidad: "",
+        dominio_corporativo: "",
+        razon_social: "",
+
+        // Otros campos que el backend podría ignorar o tener opcionales
+        disponibilidad_de_tiempo: "",
+        carrera: "",
+        universidad: "",
       };
 
       const res = await fetch(`${API_BASE_URL}/register`, {
@@ -95,7 +85,7 @@ const EmployerRegister: React.FC = () => {
         return;
       }
 
-      // pantalla "revisa tu correo" (reutilizamos StudentCheckEmail)
+      // Pantalla "revisa tu correo"
       navigate("/register/employer/check-email", {
         state: { email: form.email },
         replace: true,
@@ -107,8 +97,6 @@ const EmployerRegister: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const isEmpresa = form.tipoIdentidad === "Empresa";
 
   return (
     <div className="min-h-screen bg-background-light text-foreground-light dark:bg-background-dark dark:text-foreground-dark flex flex-col">
@@ -130,55 +118,6 @@ const EmployerRegister: React.FC = () => {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Tipo de empleador */}
-                <div>
-                  <p className="block text-sm font-medium mb-1">
-                    Tipo de empleador
-                  </p>
-                  <div className="flex gap-3 text-xs md:text-sm">
-                    <label
-                      className={`flex items-center gap-2 px-3 py-2 rounded-full border text-xs md:text-sm cursor-pointer transition-all
-                      ${
-                        form.tipoIdentidad === "Persona"
-                          ? "border-primary bg-primary/5 text-primary font-medium"
-                          : "border-slate-200 text-foreground-light/80 dark:text-foreground-dark/80 hover:bg-slate-50/60 dark:hover:bg-slate-800/60"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="tipoIdentidad"
-                        value="Persona"
-                        checked={form.tipoIdentidad === "Persona"}
-                        onChange={handleChange}
-                        className="accent-primary"
-                      />
-                      Persona
-                    </label>
-                    <label
-                      className={`flex items-center gap-2 px-3 py-2 rounded-full border text-xs md:text-sm cursor-pointer transition-all
-                      ${
-                        form.tipoIdentidad === "Empresa"
-                          ? "border-primary bg-primary/5 text-primary font-medium"
-                          : "border-slate-200 text-foreground-light/80 dark:text-foreground-dark/80 hover:bg-slate-50/60 dark:hover:bg-slate-800/60"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="tipoIdentidad"
-                        value="Empresa"
-                        checked={form.tipoIdentidad === "Empresa"}
-                        onChange={handleChange}
-                        className="accent-primary"
-                      />
-                      Empresa
-                    </label>
-                  </div>
-                  <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                    Elige si publicarás CameYos como persona natural o en nombre
-                    de una empresa.
-                  </p>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label
@@ -255,116 +194,24 @@ const EmployerRegister: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="cedulaRuc"
-                    >
-                      {isEmpresa ? "RUC" : "Cédula"}
-                    </label>
-                    <input
-                      id="cedulaRuc"
-                      name="cedulaRuc"
-                      type="text"
-                      required
-                      value={form.cedulaRuc}
-                      onChange={handleChange}
-                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="telefono"
-                    >
-                      Teléfono
-                    </label>
-                    <input
-                      id="telefono"
-                      name="telefono"
-                      type="tel"
-                      value={form.telefono}
-                      onChange={handleChange}
-                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1"
+                    htmlFor="telefono"
+                  >
+                    WhatsApp
+                  </label>
+                  <input
+                    id="telefono"
+                    name="telefono"
+                    type="tel"
+                    required
+                    value={form.telefono}
+                    onChange={handleChange}
+                    placeholder="Ej. 0991234567"
+                    className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="fechaNacimiento"
-                    >
-                      Fecha de nacimiento / creación
-                    </label>
-                    <input
-                      id="fechaNacimiento"
-                      name="fechaNacimiento"
-                      type="date"
-                      value={form.fechaNacimiento}
-                      onChange={handleChange}
-                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
-                      htmlFor="ciudad"
-                    >
-                      Ciudad
-                    </label>
-                    <input
-                      id="ciudad"
-                      name="ciudad"
-                      type="text"
-                      value={form.ciudad}
-                      onChange={handleChange}
-                      placeholder="Ej. Guayaquil"
-                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                </div>
-
-                {isEmpresa && (
-                  <>
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="razonSocial"
-                      >
-                        Razón social
-                      </label>
-                      <input
-                        id="razonSocial"
-                        name="razonSocial"
-                        type="text"
-                        value={form.razonSocial}
-                        onChange={handleChange}
-                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="dominioCorporativo"
-                      >
-                        Dominio corporativo (opcional)
-                      </label>
-                      <input
-                        id="dominioCorporativo"
-                        name="dominioCorporativo"
-                        type="text"
-                        value={form.dominioCorporativo}
-                        onChange={handleChange}
-                        placeholder="Ej. miempresa.com"
-                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                  </>
-                )}
 
                 <div className="flex items-start gap-2 text-xs text-foreground-light/80 dark:text-foreground-dark/80">
                   <input

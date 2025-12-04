@@ -1,3 +1,4 @@
+// src/auth/EmployerCompleteRegister.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
@@ -14,28 +15,33 @@ const EmployerCompleteRegister: React.FC = () => {
   const [step, setStep] = useState(0);
 
   const [form, setForm] = useState({
-    fotoPerfil: "",
-    logoEmpresa: "",
-    fraseCorta: "",
+    ciudad: "",
     biografia: "",
-    ubicacion: "",
-    preferenciasCategorias: "",
+    areaActividadPrincipal: "",
+    fotoPerfil: "", // DataURL (base64) o URL
+    logoEmpresa: "", // DataURL (base64) o URL
     whatsapp: "",
     linkedin: "",
     facebookIG: "",
     otrosLinks: "",
     dominioCorporativo: "",
     razonSocial: "",
-    areaActividadPrincipal: "",
     descripcionEmpresa: "",
-    nombreComercial: "",
   });
+
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar tipo_identidad desde auth_user
+  const [employerBase, setEmployerBase] = useState<{
+    nombre?: string;
+    apellido?: string;
+    tipo_identidad?: string;
+  }>({});
+
   useEffect(() => {
     const storedUser = localStorage.getItem("auth_user");
     if (!storedUser) {
@@ -45,24 +51,31 @@ const EmployerCompleteRegister: React.FC = () => {
 
     try {
       const parsed = JSON.parse(storedUser);
-      const raw = (
-        parsed.tipo_identidad ||
-        parsed.TipoIdentidad ||
-        ""
-      )
+      const raw = (parsed.tipo_identidad || parsed.TipoIdentidad || "")
         .toString()
         .toLowerCase();
+
+      setEmployerBase({
+        nombre: parsed.nombre,
+        apellido: parsed.apellido,
+        tipo_identidad: raw,
+      });
+
       if (raw === "empresa") {
         setTipoIdentidad("empresa");
-      } else {
+      } else if (raw === "persona") {
         setTipoIdentidad("persona");
+      } else {
+        setTipoIdentidad(null);
       }
     } catch {
       navigate("/login", { replace: true });
     }
   }, [navigate]);
 
-  const stepsTotal = tipoIdentidad === "empresa" ? 3 : 2;
+  const esEmpresa = tipoIdentidad === "empresa";
+  const stepsTotal = esEmpresa ? 3 : 2;
+  const progress = ((step + 1) / stepsTotal) * 100;
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -73,34 +86,66 @@ const EmployerCompleteRegister: React.FC = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleTipoChange = (value: TipoIdentidad) => {
+    setTipoIdentidad(value);
+    setError(null);
+    setStep(0);
+  };
+
+  const handleImageFile =
+    (field: "fotoPerfil" | "logoEmpresa") =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string; // DataURL
+        setForm((prev) => ({ ...prev, [field]: result }));
+
+        if (field === "fotoPerfil") {
+          setFotoPreview(result);
+        } else {
+          setLogoPreview(result);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
   const handleNext = () => {
     setError(null);
 
+    if (step === 0 && !tipoIdentidad) {
+      setError("Selecciona si te registras como persona o empresa.");
+      return;
+    }
+
     if (step === 0) {
-      if (
-        !form.fotoPerfil.trim() ||
-        !form.fraseCorta.trim() ||
-        !form.biografia.trim() ||
-        !form.ubicacion.trim() ||
-        !form.preferenciasCategorias.trim()
-      ) {
-        setError(
-          "Completa foto, frase corta, biografía, ubicación y categorías preferidas."
-        );
+      if (!form.ciudad.trim() || !form.biografia.trim()) {
+        setError("Completa al menos ciudad y biografía.");
+        return;
+      }
+      if (esEmpresa && !form.areaActividadPrincipal.trim()) {
+        setError("Para empresas, indica el área de actividad principal.");
         return;
       }
     }
 
-    if (tipoIdentidad === "empresa" && step === 2) {
+    if (step === 1) {
+      if (!form.whatsapp.trim()) {
+        setError("Indica un WhatsApp de contacto.");
+        return;
+      }
+    }
+
+    if (esEmpresa && step === 2) {
       if (
         !form.dominioCorporativo.trim() ||
         !form.razonSocial.trim() ||
-        !form.areaActividadPrincipal.trim() ||
-        !form.descripcionEmpresa.trim() ||
-        !form.nombreComercial.trim()
+        !form.descripcionEmpresa.trim()
       ) {
         setError(
-          "Completa los datos principales de tu empresa antes de continuar."
+          "Completa dominio corporativo, razón social y descripción de la empresa."
         );
         return;
       }
@@ -131,34 +176,24 @@ const EmployerCompleteRegister: React.FC = () => {
         return;
       }
 
-      const parseList = (raw: string): string[] =>
-        raw
-          .split(/[,|\n]/)
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-
-      const prefsArray = parseList(form.preferenciasCategorias);
-
       const payload = {
-        foto_perfil: form.fotoPerfil,
+        // 🔥 IMPORTANTE: enviar tipo_identidad al backend
+        tipo_identidad: tipoIdentidad,
+        foto_perfil_base64: form.fotoPerfil,
         logo_empresa: form.logoEmpresa,
-        frase_corta: form.fraseCorta,
+        frase_corta: "",
         biografia: form.biografia,
-        ubicacion: form.ubicacion,
-        preferencias_categorias: prefsArray,
+        ubicacion: form.ciudad,
+        preferencias_categorias: [] as string[],
         whatsapp: form.whatsapp,
         linkedin: form.linkedin,
         facebook_ig: form.facebookIG,
         otros_links: form.otrosLinks,
-        dominio_corporativo:
-          tipoIdentidad === "empresa" ? form.dominioCorporativo : "",
-        razon_social: tipoIdentidad === "empresa" ? form.razonSocial : "",
-        area_actividad_principal:
-          tipoIdentidad === "empresa" ? form.areaActividadPrincipal : "",
-        descripcion_empresa:
-          tipoIdentidad === "empresa" ? form.descripcionEmpresa : "",
-        nombre_comercial:
-          tipoIdentidad === "empresa" ? form.nombreComercial : "",
+        dominio_corporativo: esEmpresa ? form.dominioCorporativo : "",
+        razon_social: esEmpresa ? form.razonSocial : "",
+        area_actividad_principal: form.areaActividadPrincipal,
+        descripcion_empresa: esEmpresa ? form.descripcionEmpresa : "",
+        nombre_comercial: esEmpresa ? form.razonSocial : "",
       };
 
       const res = await fetch(
@@ -199,18 +234,34 @@ const EmployerCompleteRegister: React.FC = () => {
     }
   };
 
-  if (!tipoIdentidad) {
-    return (
-      <div className="min-h-screen bg-background-light text-foreground-light dark:bg-background-dark dark:text-foreground-dark flex items-center justify-center">
-        <p className="text-sm text-foreground-light/70 dark:text-foreground-dark/70">
-          Cargando tu perfil de empleador...
-        </p>
-      </div>
-    );
-  }
+  const nombreBase =
+    (employerBase.nombre || "") +
+    (employerBase.apellido ? ` ${employerBase.apellido}` : "");
+  const displayName =
+    esEmpresa && form.razonSocial.trim().length > 0
+      ? form.razonSocial
+      : nombreBase || "Empleador CameYa";
 
-  const progress = ((step + 1) / stepsTotal) * 100;
-  const esEmpresa = tipoIdentidad === "empresa";
+  const displaySub =
+    form.areaActividadPrincipal.trim().length > 0
+      ? form.areaActividadPrincipal
+      : esEmpresa
+      ? "Empresa"
+      : "Persona natural";
+
+  const ciudad = form.ciudad || "Ciudad";
+  const bioPreview =
+    form.biografia ||
+    "Aquí aparecerá la descripción de quién eres y qué tipo de CameYos publicas.";
+
+  const logoForPreview = logoPreview || form.logoEmpresa || form.fotoPerfil || null;
+
+  const linksPreview = [
+    form.whatsapp && `WhatsApp: ${form.whatsapp}`,
+    form.linkedin && "LinkedIn",
+    form.facebookIG && "Facebook / Instagram",
+    form.otrosLinks && "Otros links",
+  ].filter(Boolean) as string[];
 
   return (
     <div className="min-h-screen bg-background-light text-foreground-light dark:bg-background-dark dark:text-foreground-dark flex flex-col">
@@ -218,7 +269,6 @@ const EmployerCompleteRegister: React.FC = () => {
         <div className="w-full max-w-md">
           <Reveal>
             <div className="bg-white/95 dark:bg-background-dark/95 border border-primary/10 rounded-2xl p-6 shadow-xl">
-              {/* Header */}
               <div className="mb-4">
                 <p className="text-xs text-foreground-light/60 dark:text-foreground-dark/60 mb-1">
                   Paso {step + 1} de {stepsTotal}
@@ -250,83 +300,56 @@ const EmployerCompleteRegister: React.FC = () => {
               )}
 
               <form className="space-y-6">
-                {/* STEP 0: básicos para ambos */}
+                {/* STEP 0 */}
                 {step === 0 && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="fotoPerfil"
-                      >
-                        Foto de perfil
-                      </label>
-                      <input
-                        id="fotoPerfil"
-                        name="fotoPerfil"
-                        type="url"
-                        value={form.fotoPerfil}
-                        onChange={handleChange}
-                        placeholder="URL de tu foto o logo principal"
-                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
+                      <p className="block text-sm font-medium mb-2">
+                        ¿Te registras como persona o empresa?
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => handleTipoChange("persona")}
+                          className={[
+                            "border rounded-xl px-3 py-2 text-left transition",
+                            tipoIdentidad === "persona"
+                              ? "border-primary bg-primary/5 text-primary font-semibold"
+                              : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800",
+                          ].join(" ")}
+                        >
+                          <span className="block text-sm">Persona</span>
+                          <span className="block text-[11px] text-slate-500">
+                            Empleador independiente / negocio pequeño.
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTipoChange("empresa")}
+                          className={[
+                            "border rounded-xl px-3 py-2 text-left transition",
+                            tipoIdentidad === "empresa"
+                              ? "border-primary bg-primary/5 text-primary font-semibold"
+                              : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800",
+                          ].join(" ")}
+                        >
+                          <span className="block text-sm">Empresa</span>
+                          <span className="block text-[11px] text-slate-500">
+                            Marca formal o empresa constituida.
+                          </span>
+                        </button>
+                      </div>
                     </div>
 
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="fraseCorta"
-                      >
-                        Frase corta
+                      <label className="block text-sm font-medium mb-1" htmlFor="ciudad">
+                        Ciudad principal
                       </label>
                       <input
-                        id="fraseCorta"
-                        name="fraseCorta"
+                        id="ciudad"
+                        name="ciudad"
                         type="text"
-                        value={form.fraseCorta}
-                        onChange={handleChange}
-                        placeholder={
-                          esEmpresa
-                            ? "Ej. Empresa de eventos deportivos"
-                            : "Ej. Emprendedor de logística de eventos"
-                        }
-                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="biografia"
-                      >
-                        Biografía
-                      </label>
-                      <textarea
-                        id="biografia"
-                        name="biografia"
-                        value={form.biografia}
-                        onChange={handleChange}
-                        rows={4}
-                        placeholder={
-                          esEmpresa
-                            ? "Cuenta brevemente a qué se dedica tu empresa y qué tipo de trabajos publicas."
-                            : "Cuenta quién eres, qué haces y qué tipo de trabajos sueles publicar."
-                        }
-                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="ubicacion"
-                      >
-                        Ciudad / ubicación principal
-                      </label>
-                      <input
-                        id="ubicacion"
-                        name="ubicacion"
-                        type="text"
-                        value={form.ubicacion}
+                        value={form.ciudad}
                         onChange={handleChange}
                         placeholder="Ej. Guayaquil"
                         className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -336,31 +359,125 @@ const EmployerCompleteRegister: React.FC = () => {
                     <div>
                       <label
                         className="block text-sm font-medium mb-1"
-                        htmlFor="preferenciasCategorias"
+                        htmlFor="areaActividadPrincipal"
                       >
-                        Categorías de CameYos que publicas
+                        Área de actividad principal
                       </label>
                       <input
-                        id="preferenciasCategorias"
-                        name="preferenciasCategorias"
+                        id="areaActividadPrincipal"
+                        name="areaActividadPrincipal"
                         type="text"
-                        value={form.preferenciasCategorias}
+                        value={form.areaActividadPrincipal}
                         onChange={handleChange}
-                        placeholder="Ej. eventos, atención al cliente, almacenes... (separa por comas)"
+                        placeholder={
+                          esEmpresa
+                            ? "Ej. organización de eventos, retail, logística..."
+                            : "Ej. organización de eventos, logística de ferias..."
+                        }
                         className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1" htmlFor="biografia">
+                        Biografía / descripción
+                      </label>
+                      <textarea
+                        id="biografia"
+                        name="biografia"
+                        value={form.biografia}
+                        onChange={handleChange}
+                        rows={4}
+                        placeholder={
+                          esEmpresa
+                            ? "Cuenta brevemente a qué se dedica tu empresa y qué tipo de CameYos publicas."
+                            : "Cuenta quién eres, qué haces y qué tipo de CameYos sueles publicar."
+                        }
+                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium">
+                        Foto o imagen de perfil
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <div className="h-14 w-14 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-xs font-semibold">
+                          {fotoPreview || form.fotoPerfil ? (
+                            <img
+                              src={fotoPreview || form.fotoPerfil}
+                              alt="Foto de perfil"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span>Foto</span>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageFile("fotoPerfil")}
+                            className="block w-full text-xs text-slate-500 file:text-xs file:px-3 file:py-1.5 file:mr-3 file:rounded-full file:border-0 file:bg-primary file:text-white hover:file:brightness-110"
+                          />
+                          <input
+                            id="fotoPerfil"
+                            name="fotoPerfil"
+                            type="url"
+                            value={form.fotoPerfil}
+                            onChange={handleChange}
+                            placeholder="O pega aquí un enlace a tu foto"
+                            className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {esEmpresa && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium">
+                          Logo de empresa (opcional)
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-2xl bg-slate-200 overflow-hidden flex items-center justify-center text-[11px] font-semibold">
+                            {logoPreview || form.logoEmpresa ? (
+                              <img
+                                src={logoPreview || form.logoEmpresa}
+                                alt="Logo empresa"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span>Logo</span>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageFile("logoEmpresa")}
+                              className="block w-full text-xs text-slate-500 file:text-xs file:px-3 file:py-1.5 file:mr-3 file:rounded-full file:border-0 file:bg-primary file:text-white hover:file:brightness-110"
+                            />
+                            <input
+                              id="logoEmpresa"
+                              name="logoEmpresa"
+                              type="url"
+                              value={form.logoEmpresa}
+                              onChange={handleChange}
+                              placeholder="O pega aquí un enlace al logo"
+                              className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* STEP 1: contacto / redes (ambos tipos) */}
+                {/* STEP 1 */}
                 {step === 1 && (
                   <div className="space-y-4">
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="whatsapp"
-                      >
+                      <label className="block text-sm font-medium mb-1" htmlFor="whatsapp">
                         WhatsApp de contacto
                       </label>
                       <input
@@ -375,10 +492,7 @@ const EmployerCompleteRegister: React.FC = () => {
                     </div>
 
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="linkedin"
-                      >
+                      <label className="block text-sm font-medium mb-1" htmlFor="linkedin">
                         LinkedIn (opcional)
                       </label>
                       <input
@@ -393,10 +507,7 @@ const EmployerCompleteRegister: React.FC = () => {
                     </div>
 
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="facebookIG"
-                      >
+                      <label className="block text-sm font-medium mb-1" htmlFor="facebookIG">
                         Facebook / Instagram (opcional)
                       </label>
                       <input
@@ -411,10 +522,7 @@ const EmployerCompleteRegister: React.FC = () => {
                     </div>
 
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="otrosLinks"
-                      >
+                      <label className="block text-sm font-medium mb-1" htmlFor="otrosLinks">
                         Otros links (opcional)
                       </label>
                       <input
@@ -430,44 +538,9 @@ const EmployerCompleteRegister: React.FC = () => {
                   </div>
                 )}
 
-                {/* STEP 2: solo empresa */}
+                {/* STEP 2 (solo empresa) */}
                 {esEmpresa && step === 2 && (
                   <div className="space-y-4">
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="nombreComercial"
-                      >
-                        Nombre comercial
-                      </label>
-                      <input
-                        id="nombreComercial"
-                        name="nombreComercial"
-                        type="text"
-                        value={form.nombreComercial}
-                        onChange={handleChange}
-                        placeholder="Ej. CameYa Events S.A."
-                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="razonSocial"
-                      >
-                        Razón social
-                      </label>
-                      <input
-                        id="razonSocial"
-                        name="razonSocial"
-                        type="text"
-                        value={form.razonSocial}
-                        onChange={handleChange}
-                        className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-
                     <div>
                       <label
                         className="block text-sm font-medium mb-1"
@@ -487,19 +560,15 @@ const EmployerCompleteRegister: React.FC = () => {
                     </div>
 
                     <div>
-                      <label
-                        className="block text-sm font-medium mb-1"
-                        htmlFor="areaActividadPrincipal"
-                      >
-                        Área de actividad principal
+                      <label className="block text-sm font-medium mb-1" htmlFor="razonSocial">
+                        Razón social
                       </label>
                       <input
-                        id="areaActividadPrincipal"
-                        name="areaActividadPrincipal"
+                        id="razonSocial"
+                        name="razonSocial"
                         type="text"
-                        value={form.areaActividadPrincipal}
+                        value={form.razonSocial}
                         onChange={handleChange}
-                        placeholder="Ej. organización de eventos, retail, logística..."
                         className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
@@ -523,7 +592,6 @@ const EmployerCompleteRegister: React.FC = () => {
                   </div>
                 )}
 
-                {/* Botones */}
                 <div className="flex items-center justify-between pt-2">
                   <button
                     type="button"
@@ -555,6 +623,87 @@ const EmployerCompleteRegister: React.FC = () => {
                   )}
                 </div>
               </form>
+
+              {step === stepsTotal - 1 && (
+                <div className="mt-8">
+                  <p className="text-xs font-medium text-slate-500 mb-2 text-center">
+                    Vista previa de cómo te verán los estudiantes
+                  </p>
+                  <div className="flex justify-center">
+                    <div className="relative">
+                      <div className="absolute -top-4 -left-3 h-6 w-10 rounded-full bg-slate-200 blur-xl opacity-60" />
+                      <div className="absolute -bottom-5 -right-4 h-10 w-14 rounded-full bg-primary/30 blur-xl opacity-80" />
+
+                      <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4 shadow-2xl max-w-sm mx-auto transform rotate-[-2deg]">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-14 w-14 rounded-2xl bg-slate-700 overflow-hidden flex items-center justify-center text-sm font-semibold">
+                              {logoForPreview ? (
+                                <img
+                                  src={logoForPreview}
+                                  alt={displayName}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span>
+                                  {displayName
+                                    .split(" ")
+                                    .map((p) => p[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <h2 className="text-base font-semibold leading-tight">
+                                {displayName}
+                              </h2>
+                              <p className="text-[11px] text-slate-200/80 line-clamp-1">
+                                {displaySub}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 rounded-full bg-slate-800/70 border border-slate-700 text-[10px]">
+                            {ciudad}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-100/90 mb-3 line-clamp-3">
+                          {bioPreview}
+                        </p>
+
+                        {linksPreview.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+                              Contacto / redes
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {linksPreview.map((l) => (
+                                <span
+                                  key={l}
+                                  className="px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700 text-[9px]"
+                                >
+                                  {l}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex items-center justify-center gap-6">
+                          <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-600 text-xs">
+                            ✕
+                          </div>
+                          <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center shadow-lg text-sm">
+                            ✔
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </Reveal>
         </div>
