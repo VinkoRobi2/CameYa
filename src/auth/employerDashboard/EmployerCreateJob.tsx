@@ -1,3 +1,4 @@
+// src/auth/employerDashboard/EmployerCreateJob.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -14,12 +15,15 @@ const EmployerCreateJob: React.FC = () => {
     titulo: "",
     pago_estimado: "",
     negociable: false,
+    metodo_pago: "",
+    es_virtual: false, // 🔹 flag virtual/presencial
     ubicacion: "",
     descripcion: "",
     requisitos: "",
-    habilidades: "",
+    foto_trabajo_base64: "", // 🔹 NUEVO: imagen del CameYo
   });
 
+  const [jobImagePreview, setJobImagePreview] = useState<string | null>(null); // 🔹 preview
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -36,13 +40,34 @@ const EmployerCreateJob: React.FC = () => {
   }
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  // 🔹 Manejo de imagen del CameYo
+  const handleJobImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        // reader.result ya viene en formato data:image/...;base64,...
+        setForm((prev) => ({
+          ...prev,
+          foto_trabajo_base64: reader.result,
+        }));
+        setJobImagePreview(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,12 +82,13 @@ const EmployerCreateJob: React.FC = () => {
       return;
     }
 
-    // Validación mínima en frontend
+    // 🔹 Validación mínima en frontend
     if (
       !form.categoria.trim() ||
       !form.titulo.trim() ||
       !form.pago_estimado.trim() ||
-      !form.ubicacion.trim() ||
+      !form.metodo_pago.trim() ||
+      (!form.es_virtual && !form.ubicacion.trim()) || // ubicación solo si NO es virtual
       !form.descripcion.trim()
     ) {
       setError("Completa todos los campos obligatorios.");
@@ -89,14 +115,19 @@ const EmployerCreateJob: React.FC = () => {
           titulo: form.titulo,
           pago_estimado: pagoNumber,
           negociable: form.negociable,
-          ubicacion: form.ubicacion,
+          metodo_pago: form.metodo_pago,
+          presencial: !form.es_virtual,
+          ubicacion: form.es_virtual ? "" : form.ubicacion,
           descripcion: form.descripcion,
           requisitos: form.requisitos,
-          habilidades: form.habilidades,
+          foto_trabajo_base64:
+            form.foto_trabajo_base64 && form.foto_trabajo_base64.trim().length > 0
+              ? form.foto_trabajo_base64
+              : undefined, // 🔹 opcional, para que si está vacío no moleste
         }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({} as any));
 
       if (res.status === 401) {
         logout();
@@ -106,8 +137,8 @@ const EmployerCreateJob: React.FC = () => {
 
       if (!res.ok) {
         setError(
-          (data && (data.error as string)) ||
-            (data && (data.mensaje as string)) ||
+          (data as any).error ||
+            (data as any).mensaje ||
             "No se pudo crear el trabajo."
         );
         return;
@@ -119,11 +150,14 @@ const EmployerCreateJob: React.FC = () => {
         titulo: "",
         pago_estimado: "",
         negociable: false,
+        metodo_pago: "",
+        es_virtual: false,
         ubicacion: "",
         descripcion: "",
         requisitos: "",
-        habilidades: "",
+        foto_trabajo_base64: "",
       });
+      setJobImagePreview(null);
 
       const isCompany =
         typeof tipoIdentidad === "string" &&
@@ -148,23 +182,27 @@ const EmployerCreateJob: React.FC = () => {
     navigate("/", { replace: true });
   };
 
-  // 🔹 Progreso visual según campos obligatorios llenos
-  const requiredFields: (keyof typeof form)[] = [
+  // 🔹 Progreso visual (ubicación solo cuenta si no es virtual)
+  const requiredFieldsBase: (keyof typeof form)[] = [
     "categoria",
     "titulo",
     "pago_estimado",
-    "ubicacion",
+    "metodo_pago",
     "descripcion",
   ];
+  const requiredFields: (keyof typeof form)[] = form.es_virtual
+    ? requiredFieldsBase
+    : [...requiredFieldsBase, "ubicacion"];
+
   const completedRequired = requiredFields.filter(
     (field) => String(form[field]).trim() !== ""
   ).length;
+
   const progress =
     requiredFields.length === 0
       ? 0
       : Math.round((completedRequired / requiredFields.length) * 100);
 
-  // 🔹 Para microcopy contextual
   const isCompanyView =
     typeof tipoIdentidad === "string" &&
     tipoIdentidad.toLowerCase() === "empresa";
@@ -183,7 +221,7 @@ const EmployerCreateJob: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* Encabezado con mini paso a paso y progreso */}
+          {/* Encabezado + progreso */}
           <div className="mb-6 space-y-3">
             <div>
               <h1 className="text-xl md:text-2xl font-semibold mb-1">
@@ -196,7 +234,6 @@ const EmployerCreateJob: React.FC = () => {
               </p>
             </div>
 
-            {/* Barra de progreso */}
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px] md:text-xs text-foreground-light/70 dark:text-foreground-dark/70">
                 <span>Progreso del formulario</span>
@@ -234,11 +271,10 @@ const EmployerCreateJob: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Layout: formulario + columna de tips */}
           <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.05fr)]">
             {/* FORMULARIO */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Paso 1: básicos */}
+              {/* Paso 1 */}
               <div className="rounded-2xl bg-white/90 dark:bg-background-dark/90 border border-primary/10 px-4 py-4 md:px-5 md:py-5 space-y-4 shadow-sm transition-all duration-200 hover:shadow-md focus-within:border-primary focus-within:shadow-md">
                 <p className="text-[11px] md:text-xs font-semibold text-primary/80 uppercase tracking-wide mb-1 flex items-center gap-2">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px]">
@@ -263,8 +299,8 @@ const EmployerCreateJob: React.FC = () => {
                     }
                   />
                   <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                    Tip: piensa en la categoría como la “familia” del trabajo. Facilita
-                    que los estudiantes lo encuentren rápido en el feed.
+                    Tip: piensa en la categoría como la “familia” del trabajo para que se
+                    encuentre fácil en el feed.
                   </p>
                 </div>
 
@@ -284,37 +320,23 @@ const EmployerCreateJob: React.FC = () => {
                     }
                   />
                   <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                    {isCompanyView ? (
-                      <>
-                        Usa el título para dejar claro el tipo de activación o evento,
-                        la marca y el contexto. Ej:&nbsp;
-                        <span className="italic">
-                          “Team de apoyo para feria de empleo (viernes)”.
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        Cuenta rápidamente qué necesitas y cuándo. Ej:&nbsp;
-                        <span className="italic">
-                          “Ayuda para logística en cumpleaños (sábado tarde)”.
-                        </span>
-                      </>
-                    )}
+                    Usa el título para dejar claro el tipo de CameYo, lugar y día.
                   </p>
                 </div>
               </div>
 
-              {/* Paso 2: pago y ubicación */}
+              {/* Paso 2: pago, método y virtual/presencial */}
               <div className="rounded-2xl bg-white/90 dark:bg-background-dark/90 border border-primary/10 px-4 py-4 md:px-5 md:py-5 space-y-4 shadow-sm transition-all duration-200 hover:shadow-md focus-within:border-primary focus-within:shadow-md">
                 <p className="text-[11px] md:text-xs font-semibold text-primary/80 uppercase tracking-wide mb-1 flex items-center gap-2">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px]">
                     2
                   </span>
-                  Paso 2 · Pago y ubicación
+                  Paso 2 · Pago y modalidad
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2">
+                  {/* Pago */}
+                  <div>
                     <label className="block text-sm font-medium mb-1">
                       Pago estimado (USD) *
                     </label>
@@ -329,10 +351,33 @@ const EmployerCreateJob: React.FC = () => {
                       placeholder="25"
                     />
                     <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                      Coloca el pago total esperado por el CameYo (no por hora) para que
-                      el estudiante tenga una idea clara de cuánto va a ganar.
+                      Coloca el pago total del CameYo (no por hora).
                     </p>
                   </div>
+
+                  {/* Método de pago */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Método de pago *
+                    </label>
+                    <select
+                      name="metodo_pago"
+                      value={form.metodo_pago}
+                      onChange={handleChange}
+                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="efectivo">Efectivo</option>
+                      <option value="transferencia bancaria">
+                        Transferencia bancaria
+                      </option>
+                    </select>
+                    <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
+                      Indica si pagarás en efectivo o por transferencia.
+                    </p>
+                  </div>
+
+                  {/* Negociable */}
                   <div className="flex items-end">
                     <label className="inline-flex items-center gap-2 text-sm text-foreground-light/80 dark:text-foreground-dark/80">
                       <input
@@ -347,40 +392,50 @@ const EmployerCreateJob: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Ubicación *
+                {/* Virtual / presencial */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm text-foreground-light/80 dark:text-foreground-dark/80">
+                    <input
+                      type="checkbox"
+                      name="es_virtual"
+                      checked={form.es_virtual}
+                      onChange={handleChange}
+                      className="rounded border-slate-300 text-primary focus:ring-primary/30"
+                    />
+                    <span>Este CameYo es virtual (online)</span>
                   </label>
-                  <input
-                    name="ubicacion"
-                    value={form.ubicacion}
-                    onChange={handleChange}
-                    className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder={
-                      isCompanyView
-                        ? "Local / punto de venta / stand en ESPOL"
-                        : "Guayaquil, ESPOL, Campus Gustavo Galindo"
-                    }
-                  />
-                  <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                    {isCompanyView ? (
-                      <>
-                        Indica si el CameYo es en tu local, en un stand dentro de ESPOL
-                        o en otro punto específico. Esto ayuda al estudiante a calcular
-                        tiempos de traslado.
-                      </>
-                    ) : (
-                      <>
-                        Especifica el lugar lo más claro posible. Si es dentro de ESPOL,
-                        indica el campus y la zona aproximada (facultad, edificio,
-                        canchas, etc.).
-                      </>
-                    )}
+
+                  <p className="text-[11px] text-foreground-light/60 dark:text-foreground-dark/60 max-w-md">
+                    Si es virtual, no se pedirá una ubicación física y el CameYo se
+                    entenderá como remoto (clases en línea, diseño, soporte remoto, etc.).
                   </p>
                 </div>
+
+                {/* Ubicación solo cuando NO es virtual */}
+                {!form.es_virtual && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Ubicación *
+                    </label>
+                    <input
+                      name="ubicacion"
+                      value={form.ubicacion}
+                      onChange={handleChange}
+                      className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                      placeholder={
+                        isCompanyView
+                          ? "Local / punto de venta / stand en ESPOL"
+                          : "Guayaquil, ESPOL, Campus Gustavo Galindo"
+                      }
+                    />
+                    <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
+                      Indica el lugar donde se realizará el CameYo.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Paso 3: detalles del trabajo */}
+              {/* Paso 3: detalles + imagen */}
               <div className="rounded-2xl bg-white/90 dark:bg-background-dark/90 border border-primary/10 px-4 py-4 md:px-5 md:py-5 space-y-4 shadow-sm transition-all duration-200 hover:shadow-md focus-within:border-primary focus-within:shadow-md">
                 <p className="text-[11px] md:text-xs font-semibold text-primary/80 uppercase tracking-wide mb-1 flex items-center gap-2">
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px]">
@@ -400,14 +455,12 @@ const EmployerCreateJob: React.FC = () => {
                     className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all min-h-[90px]"
                     placeholder={
                       isCompanyView
-                        ? "Describe qué hará el estudiante durante la activación (recibir clientes, entregar material, ayudar a montar/desmontar, etc.)."
-                        : "Describe qué esperas del estudiante, horario, tareas concretas, si habrá pausas o refrigerio, etc."
+                        ? "Describe qué hará el estudiante durante la activación..."
+                        : "Describe qué esperas del estudiante, horario, tareas concretas..."
                     }
                   />
                   <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                    Incluye horario, duración aproximada y tipo de tareas. Mientras más
-                    concreto seas, más fácil será que el estudiante decida si el CameYo
-                    le calza.
+                    Incluye horario, duración aproximada y tipo de tareas.
                   </p>
                 </div>
 
@@ -422,36 +475,46 @@ const EmployerCreateJob: React.FC = () => {
                     className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all min-h-[70px]"
                     placeholder={
                       isCompanyView
-                        ? "Ejemplo: buena presencia, trato con clientes, puntualidad, manejo básico de caja (si aplica)..."
-                        : "Ejemplo: mayor de edad, puntual, responsable, experiencia básica en atención al cliente..."
+                        ? "Ejemplo: buena presencia, trato con clientes, puntualidad..."
+                        : "Ejemplo: mayor de edad, puntual, responsable..."
                     }
                   />
-                  <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                    Usa requisitos solo para lo realmente necesario. Evita poner listas
-                    largas que puedan espantar a buenos candidatos.
-                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Habilidades valoradas (opcional)
+                {/* 🔹 Imagen del CameYo */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">
+                    Imagen del CameYo (opcional)
                   </label>
-                  <textarea
-                    name="habilidades"
-                    value={form.habilidades}
-                    onChange={handleChange}
-                    className="w-full rounded-xl bg-background-light dark:bg-background-dark border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all min-h-[70px]"
-                    placeholder={
-                      isCompanyView
-                        ? "Ejemplo: ventas, comunicación con clientes, manejo de redes en vivo, trabajo en equipo..."
-                        : "Ejemplo: manejo de Excel, buena comunicación, trabajo en equipo, experiencia en eventos..."
-                    }
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleJobImageChange}
+                    className="block w-full text-xs text-foreground-light/80 dark:text-foreground-dark/80
+                      file:mr-3 file:py-1.5 file:px-3
+                      file:rounded-full file:border-0
+                      file:text-xs file:font-semibold
+                      file:bg-primary/10 file:text-primary
+                      hover:file:bg-primary/20"
                   />
-                  <p className="mt-1 text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
-                    Menciona habilidades que suman puntos pero no son excluyentes:
-                    comunicación, proactividad, experiencia en eventos, organización,
-                    etc.
+                  <p className="text-[11px] text-foreground-light/60 dark:text-foreground-dark/60">
+                    Esta imagen se mostrará como portada del CameYo en el feed de estudiantes.
                   </p>
+
+                  {jobImagePreview && (
+                    <div className="mt-2">
+                      <p className="text-[11px] text-foreground-light/70 dark:text-foreground-dark/70 mb-1">
+                        Vista previa:
+                      </p>
+                      <div className="w-full max-w-xs aspect-video overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                        <img
+                          src={jobImagePreview}
+                          alt="Vista previa del CameYo"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -480,10 +543,9 @@ const EmployerCreateJob: React.FC = () => {
               </div>
             </form>
 
-            {/* COLUMNA DE TIPS / CONTEXTO */}
+            {/* COLUMNA TIPS */}
             <aside className="hidden lg:block">
               <div className="sticky top-8 space-y-4">
-                {/* 🔹 Sugerencias con nuevo color en tonos CameYa */}
                 <motion.div
                   className="rounded-2xl bg-primary/10 border border-primary/30 text-foreground-light dark:text-foreground-dark px-4 py-4 text-sm shadow-sm"
                   initial={{ opacity: 0, x: 12 }}
@@ -505,34 +567,10 @@ const EmployerCreateJob: React.FC = () => {
                       malentendidos.
                     </li>
                     <li>
-                      Explica el contexto:{" "}
-                      {isCompanyView
-                        ? "¿es una activación de marca, un evento corporativo, una campaña puntual?"
-                        : "¿es un evento familiar, una reunión, una mudanza, un apoyo académico?"}
-                    </li>
-                    <li>
-                      Piensa en el estudiante: ¿qué le gustaría saber antes de aceptar?
-                      Horario real, tipo de tareas y ambiente.
+                      Añadir una imagen ayuda a que el CameYo destaque y se entienda mejor
+                      el contexto.
                     </li>
                   </ul>
-                </motion.div>
-
-                <motion.div
-                  className="rounded-2xl bg-white/95 dark:bg-background-dark/95 border border-primary/10 px-4 py-3 text-xs text-foreground-light/80 dark:text-foreground-dark/80 shadow-sm"
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2, duration: 0.35 }}
-                >
-                  <p className="font-semibold mb-1">
-                    {isCompanyView
-                      ? "Prueba el modelo con un CameYo piloto"
-                      : "Empieza con algo sencillo"}
-                  </p>
-                  <p>
-                    {isCompanyView
-                      ? "Si eres empresa, puedes empezar con una sola activación pequeña para entender cómo responden los estudiantes y luego escalar a más fechas."
-                      : "Si es tu primera vez usando CameYa, publica un CameYo pequeño y concreto. Ver cómo funciona te ayudará a ajustar futuros trabajos."}
-                  </p>
                 </motion.div>
               </div>
             </aside>

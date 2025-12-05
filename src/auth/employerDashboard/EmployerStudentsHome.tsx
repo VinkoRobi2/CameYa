@@ -1,3 +1,4 @@
+// src/auth/employerDashboard/EmployerStudentsHome.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "../../global/ApiBase";
@@ -7,15 +8,13 @@ import EmployerSidebar from "./EmployerSidebar";
 interface PublicStudent {
   nombre: string;
   apellido: string;
-  titulo_perfil: string;
-  sectores_preferencias: string[];
   ciudad: string;
   carrera: string;
   universidad: string;
   habilidades_basicas: string[];
   foto_perfil: string;
-  whatsapp: string;
   disponibilidad_de_tiempo: string;
+  biografia: string;
 }
 
 interface ApiResponse {
@@ -92,9 +91,7 @@ const EmployerStudentsHome: React.FC = () => {
           }
         );
 
-        const data: ApiResponse = await res
-          .json()
-          .catch(() => ({} as any));
+        const data: ApiResponse = await res.json().catch(() => ({} as any));
 
         if (res.status === 401) {
           logout();
@@ -131,7 +128,7 @@ const EmployerStudentsHome: React.FC = () => {
   const nextPage = () => setPage((p) => p + 1);
   const prevPage = () => setPage((p) => (p > 1 ? p - 1 : 1));
 
-  // helper para limpiar { } y " que vienen en los strings
+  // helper para limpiar { } y " que vienen en los strings de habilidades_basicas
   const normalizeList = (arr?: string[]) =>
     (arr || [])
       .map((s) => s.replace(/[{}"]/g, "").trim())
@@ -212,9 +209,6 @@ const EmployerStudentsHome: React.FC = () => {
 
                   const st = {
                     ...s,
-                    sectores_preferencias: normalizeList(
-                      s.sectores_preferencias
-                    ),
                     habilidades_basicas: normalizeList(
                       s.habilidades_basicas
                     ),
@@ -223,18 +217,6 @@ const EmployerStudentsHome: React.FC = () => {
                   const fullName =
                     `${st.nombre ?? ""} ${st.apellido ?? ""}`.trim() ||
                     "Estudiante CameYa";
-
-                  const subtitleParts: string[] = [];
-                  if (st.titulo_perfil)
-                    subtitleParts.push(st.titulo_perfil);
-                  if (st.carrera && st.universidad) {
-                    subtitleParts.push(
-                      `${st.carrera} en ${st.universidad}`
-                    );
-                  }
-                  const subtitle =
-                    subtitleParts.join(" · ") ||
-                    "Estudiante universitario";
 
                   const initials =
                     fullName
@@ -245,26 +227,20 @@ const EmployerStudentsHome: React.FC = () => {
                       .join("")
                       .toUpperCase() || "ST";
 
-                  const sectores = st.sectores_preferencias || [];
+                  // Subtítulo: carrera + universidad
+                  const subtitle =
+                    st.carrera && st.universidad
+                      ? `${st.carrera} · ${st.universidad}`
+                      : st.carrera ||
+                        st.universidad ||
+                        "Estudiante universitario";
+
                   const habilidades = st.habilidades_basicas || [];
                   const disponibilidad =
                     st.disponibilidad_de_tiempo ||
                     "No especificado";
 
-                  // Tomamos máximo 2 sectores y 1 habilidad (2–3 chips)
-                  const sectorChips = sectores.slice(0, 2);
-                  const habilidadChips = habilidades.slice(0, 1);
-
-                  const chips = [
-                    ...sectorChips.map((sec) => ({
-                      type: "sector" as const,
-                      label: sec,
-                    })),
-                    ...habilidadChips.map((hab) => ({
-                      type: "habilidad" as const,
-                      label: hab,
-                    })),
-                  ];
+                  const habilidadChips = habilidades.slice(0, 3);
 
                   return (
                     <article
@@ -302,16 +278,12 @@ const EmployerStudentsHome: React.FC = () => {
                       {/* Zona inferior: chips + CTA */}
                       <div className="p-4 flex flex-col gap-3">
                         <div className="flex flex-wrap gap-2">
-                          {chips.map((chip) => (
+                          {habilidadChips.map((hab) => (
                             <span
-                              key={`${chip.type}-${chip.label}`}
-                              className={`px-3 py-1 rounded-full text-[11px] font-medium ${
-                                chip.type === "sector"
-                                  ? "bg-primary/10 text-primary"
-                                  : "bg-sky-50 text-sky-700"
-                              }`}
+                              key={hab}
+                              className="px-3 py-1 rounded-full text-[11px] font-medium bg-sky-50 text-sky-700"
                             >
-                              {chip.label}
+                              {hab}
                             </span>
                           ))}
                         </div>
@@ -347,7 +319,7 @@ const EmployerStudentsHome: React.FC = () => {
                   disabled={currentIndex === students.length - 1}
                   className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
-                  →
+                  → 
                 </button>
               </div>
 
@@ -397,7 +369,7 @@ const EmployerStudentsHome: React.FC = () => {
           </>
         )}
 
-        {/* MODAL PERFIL PÚBLICO ESTUDIANTE - FULL IMAGE PROTAGONISTA */}
+        {/* MODAL PERFIL PÚBLICO ESTUDIANTE */}
         {showModal && profile && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
@@ -453,14 +425,10 @@ const EmployerStudentsHome: React.FC = () => {
                         profile.apellido ?? ""
                       }`.trim() || "Estudiante CameYa"}
                     </h2>
-                    <p className="text-xs md:text-sm text-white/80">
-                      {profile.titulo_perfil ||
-                        "Estudiante universitario CameYa"}
-                    </p>
                     <p className="mt-1 text-[11px] md:text-xs text-white/70">
                       {profile.carrera && profile.universidad
                         ? `${profile.carrera} · ${profile.universidad}`
-                        : profile.carrera || profile.universidad}
+                        : profile.carrera || profile.universidad || ""}
                       {profile.ciudad && ` · ${profile.ciudad}`}
                     </p>
                   </div>
@@ -472,27 +440,11 @@ const EmployerStudentsHome: React.FC = () => {
                     <p className="font-semibold">
                       {profile.disponibilidad_de_tiempo || "No especificado"}
                     </p>
-                    <p className="mt-2 uppercase tracking-wide text-white/60">
-                      Contacto
-                    </p>
-                    <p className="font-semibold">
-                      {profile.whatsapp || "No disponible"}
-                    </p>
                   </div>
                 </div>
 
-                {/* Chips: sectores y habilidades */}
+                {/* Habilidades */}
                 <div className="flex flex-wrap gap-2 text-[11px] md:text-xs pointer-events-auto">
-                  {normalizeList(profile.sectores_preferencias).map(
-                    (s, idx) => (
-                      <span
-                        key={`sec-${idx}`}
-                        className="px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm"
-                      >
-                        {s}
-                      </span>
-                    )
-                  )}
                   {normalizeList(profile.habilidades_basicas).map(
                     (h, idx) => (
                       <span
@@ -505,16 +457,17 @@ const EmployerStudentsHome: React.FC = () => {
                   )}
                 </div>
 
-                {/* Descripción breve */}
+                {/* Biografía */}
                 <div className="max-w-2xl text-[11px] md:text-xs text-white/85 pointer-events-auto">
                   <p>
-                    {profile.titulo_perfil ||
-                      "Estudiante en búsqueda de CameYos que se ajusten a su perfil y disponibilidad."}
+                    {profile.biografia &&
+                    profile.biografia.trim().length > 0
+                      ? profile.biografia
+                      : "Este estudiante aún no ha añadido una biografía detallada."}
                   </p>
                   <p className="mt-1 text-white/70">
-                    Usa el contacto solo cuando tengas interés real en avanzar
-                    con un CameYo. Sé claro con horario, pago y tipo de tareas
-                    al escribirle.
+                    La comunicación se realiza por el chat 1 a 1 de CameYa
+                    cuando exista interés mutuo en avanzar con un CameYo.
                   </p>
                 </div>
               </div>

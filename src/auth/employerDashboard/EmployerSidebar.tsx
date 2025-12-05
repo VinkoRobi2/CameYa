@@ -1,6 +1,7 @@
 // src/auth/employerDashboard/EmployerSidebar.tsx
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import svg_logo from "../../assets/CameYa.Black.SVG.svg";
 
 interface Props {
   mode: "person" | "company";
@@ -40,16 +41,14 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
 
   return (
     // Wrapper para integrarse bien en el layout padre
-    <div className="relative w-0 md:w-64 md:flex-shrink-0">
+    <div className="relative w-0 md:w-64 md:flex-shrink-0 md:h-screen md:min-h-screen">
       {/* Botón flotante para abrir menú en móvil */}
       <button
         type="button"
         onClick={() => setIsOpen(true)}
         className="md:hidden fixed top-4 left-4 z-40 inline-flex items-center gap-2 rounded-full bg-white/90 border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
       >
-        <span className="h-6 w-6 flex items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
-          CY
-        </span>
+        <img src={svg_logo} alt="CameYa" className="h-6 w-auto" />
         <span>Menú empleador</span>
       </button>
 
@@ -68,13 +67,12 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
           "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-200",
           isOpen ? "translate-x-0" : "-translate-x-full",
           // desktop: estático, siempre visible y ocupando toda la pantalla vertical
-          "md:static md:translate-x-0 md:h-screen",
+          "md:static md:translate-x-0 md:h-screen md:min-h-screen",
         ].join(" ")}
       >
+        {/* Header con logo CameYa arriba a la izquierda */}
         <div className="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-            CY
-          </div>
+          <img src={svg_logo} alt="CameYa" className="h-8 w-auto" />
           <div>
             <p className="text-sm font-semibold">CameYa</p>
             <p className="text-xs text-slate-500">{subtitle}</p>
@@ -111,7 +109,9 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
           {/* Historial */}
           <button
             onClick={() => handleNavigate(`${baseDashboardPath}/history`)}
-            className={buttonClasses(isActive(`${baseDashboardPath}/history`))}
+            className={buttonClasses(
+              isActive(`${baseDashboardPath}/history`)
+            )}
           >
             Historial de CameYos
           </button>
@@ -119,7 +119,9 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
           {/* Perfil */}
           <button
             onClick={() => handleNavigate(`${baseDashboardPath}/profile`)}
-            className={buttonClasses(isActive(`${baseDashboardPath}/profile`))}
+            className={buttonClasses(
+              isActive(`${baseDashboardPath}/profile`)
+            )}
           >
             Mi perfil
           </button>
