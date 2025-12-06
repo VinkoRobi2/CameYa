@@ -20,6 +20,15 @@ interface ChatMessage {
   createdAt: string;
 }
 
+interface MensajeApi {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  job_id: number;
+  contenido: string;
+  fecha: string;
+}
+
 const StudentChat: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -39,8 +48,31 @@ const StudentChat: React.FC = () => {
 
   const employerName = state.employerName || "Empleador CameYa";
   const jobTitle = state.jobTitle || "CameYo sin título";
-  const avatar = state.avatar;
+  const otherAvatar = state.avatar;
   const jobId = state.jobId; // se usa en el backend
+
+  // Datos del usuario logueado (estudiante) desde localStorage
+  const storedUserStr = localStorage.getItem("auth_user");
+  let selfAvatar: string | undefined;
+  let currentUserId: number | null = null;
+
+  if (storedUserStr) {
+    try {
+      const u: any = JSON.parse(storedUserStr);
+      selfAvatar =
+        u.foto_perfil || u.fotoPerfil || u.FotoPerfil || undefined;
+      currentUserId =
+        u.id ??
+        u.ID ??
+        u.user_id ??
+        u.userID ??
+        u.estudiante_id ??
+        u.student_id ??
+        null;
+    } catch {
+      // ignore
+    }
+  }
 
   // Scroll al final cuando cambian los mensajes
   useEffect(() => {
@@ -49,7 +81,54 @@ const StudentChat: React.FC = () => {
     }
   }, [messages]);
 
-  // Abrir WebSocket (en dev con StrictMode verás dos conexiones, es normal)
+  // 1) Cargar histórico desde backend (igual que EmployerChat)
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token || !receiverId || !jobId || !currentUserId) return;
+
+    const fetchHistory = async () => {
+      try {
+        const url = `${API_BASE_URL}/protected/mensajes/${receiverId}?job_id=${jobId}`;
+        const res = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (!res.ok) {
+          console.error("Error cargando histórico de mensajes (student)");
+          return;
+        }
+
+        const data = await res.json();
+        const apiMessages: MensajeApi[] = data.mensajes || [];
+
+        const mapped: ChatMessage[] = apiMessages.map((m) => ({
+          id: m.id,
+          text: m.contenido,
+          fromSelf: m.sender_id === currentUserId,
+          createdAt: new Date(m.fecha).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+
+        setMessages(mapped);
+      } catch (err) {
+        console.error("Error histórico mensajes student:", err);
+      }
+    };
+
+    fetchHistory();
+  }, [receiverId, jobId, currentUserId, logout, navigate]);
+
+  // 2) Abrir WebSocket para mensajes en tiempo real
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -109,7 +188,7 @@ const StudentChat: React.FC = () => {
         {
           id: now.getTime() + Math.random(),
           text,
-          fromSelf: false,
+          fromSelf: false, // viene del empleador
           createdAt: now.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -123,7 +202,12 @@ const StudentChat: React.FC = () => {
     };
 
     ws.onclose = (evt) => {
-      console.log("Student WS cerrado, code:", evt.code, "reason:", evt.reason);
+      console.log(
+        "Student WS cerrado, code:",
+        evt.code,
+        "reason:",
+        evt.reason
+      );
       setWsStatus("closed");
       wsRef.current = null;
     };
@@ -139,7 +223,7 @@ const StudentChat: React.FC = () => {
 
     const ws = wsRef.current;
 
-    // Si el WS aún no está OPEN (por StrictMode o porque tarda),
+    // Si el WS aún no está OPEN,
     // guardamos el mensaje y dejamos que onopen lo envíe.
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       console.log("WS aún no OPEN, guardando mensaje pendiente (student)");
@@ -179,6 +263,35 @@ const StudentChat: React.FC = () => {
     navigate("/", { replace: true });
   };
 
+  const renderAvatar = (fromSelf: boolean) => {
+    const url = fromSelf ? selfAvatar : otherAvatar;
+    const name = fromSelf ? "Tú" : employerName;
+
+    if (url) {
+      return (
+        <img
+          src={url}
+          alt={name}
+          className="h-7 w-7 rounded-full object-cover border border-slate-200"
+        />
+      );
+    }
+
+    const initials = name
+      .split(" ")
+      .filter(Boolean)
+      .map((p) => p[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+
+    return (
+      <div className="h-7 w-7 rounded-full bg-slate-300 flex items-center justify-center text-[10px] font-semibold text-slate-700">
+        {initials}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen flex bg-slate-50">
       <StudentSidebar onLogout={handleLogout} />
@@ -198,9 +311,9 @@ const StudentChat: React.FC = () => {
             <div className="px-6 py-4 bg-gradient-to-r from-pink-50 via-white to-purple-50 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
-                  {avatar ? (
+                  {otherAvatar ? (
                     <img
-                      src={avatar}
+                      src={otherAvatar}
                       alt={employerName}
                       className="w-full h-full object-cover"
                     />
@@ -256,10 +369,12 @@ const StudentChat: React.FC = () => {
               {messages.map((m) => (
                 <div
                   key={m.id}
-                  className={`flex ${
+                  className={`flex items-end gap-2 ${
                     m.fromSelf ? "justify-end" : "justify-start"
                   }`}
                 >
+                  {/* Foto de quien envía */}
+                  {renderAvatar(m.fromSelf)}
                   <div
                     className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${
                       m.fromSelf
