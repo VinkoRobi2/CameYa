@@ -230,8 +230,8 @@ const EmployerProfile: React.FC = () => {
 
   // Derivados para header
   const isCompany =
-    profile?.tipo_identidad &&
-    profile.tipo_identidad.toLowerCase() === "empresa";
+    (profile?.tipo_identidad &&
+    profile.tipo_identidad.toLowerCase() === "empresa") || false;
 
   const getInitialsFromText = (text: string) => {
     if (!text) return "EM";
