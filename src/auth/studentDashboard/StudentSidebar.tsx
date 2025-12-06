@@ -26,7 +26,7 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
   const navItems = [
     { path: "/dashboard/student", label: "CameYos", icon: "💼" },
     { path: "/dashboard/student/matches", label: "Matches", icon: "💬" },
-    { path: "/dashboard/student/browse-employers", label: "Historial", icon: "🕒" },
+    { path: "/dashboard/student/browse-employers", label: "Empleadores", icon: "🏢" },
     { path: "/dashboard/student/profile", label: "Perfil", icon: "👤" },
   ];
 

@@ -1,80 +1,54 @@
-// src/auth/studentDashboard/StudentChat.tsx
-import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import StudentSidebar from "../studentDashboard/StudentSidebar";
-import API_BASE_URL from "../../global/ApiBase";
+// src/auth/studentDashboard/StudentMatches.tsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../global/AuthContext";
+import API_BASE_URL from "../../global/ApiBase";
+import StudentSidebar from "./StudentSidebar";
 
-interface LocationState {
-  empleadorId?: number;
-  jobId?: number;
-  jobTitle?: string;
-  employerName?: string;
-  avatar?: string; // avatar del empleador
+const MATCHES_ENDPOINT = `${API_BASE_URL}/protected/matches/aceptados/estudiantes`;
+
+interface StudentMatch {
+  id?: number;
+
+  // Trabajo
+  job_id?: number;
+  job_titulo?: string;
+  trabajo_titulo?: string;
+  titulo?: string;
+  job_descripcion?: string;
+  descripcion?: string;
+
+  // Empleador
+  empleador_id?: number;
+  empleador_nombre?: string;
+  nombre?: string;
+  apellido?: string;
+  empresa?: string;
+  empleador_empresa?: string;
+
+  // Imagen / ciudad
+  foto_empleador?: string;
+  foto_perfil?: string;
+  foto_job?: string;
+  job_foto?: string;
+  ciudad?: string;
+
+  [key: string]: any;
 }
 
-interface ChatMessage {
-  id: number;
-  text: string;
-  fromSelf: boolean;
-  createdAt: string;
-}
-
-const StudentChat: React.FC = () => {
+const StudentMatches: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const { receiverId } = useParams<{ receiverId: string }>(); // empleador_id
-  const location = useLocation();
-  const state = (location.state as LocationState) || {};
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [wsStatus, setWsStatus] = useState<"connecting" | "open" | "closed">(
-    "connecting"
-  );
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [matches, setMatches] = useState<StudentMatch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const pendingMessageRef = useRef<string | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
 
-  const employerName = state.employerName || "Empleador CameYa";
-  const jobTitle = state.jobTitle || "CameYo sin título";
-  const employerAvatar = state.avatar;
-  const jobId = state.jobId; // se usa en el backend
-
-  // Avatar del estudiante (self) desde auth_user en localStorage
-  let studentAvatar: string | undefined;
-  let studentInitials = "Tú";
-  const authUserStr = localStorage.getItem("auth_user");
-  if (authUserStr) {
-    try {
-      const u = JSON.parse(authUserStr);
-      if (u.foto_perfil && typeof u.foto_perfil === "string") {
-        studentAvatar = u.foto_perfil;
-      }
-      if (u.nombre) {
-        studentInitials = String(u.nombre)
-          .split(" ")
-          .filter(Boolean)
-          .map((p: string) => p[0])
-          .slice(0, 2)
-          .join("")
-          .toUpperCase();
-      }
-    } catch {
-      // ignoramos parse error
-    }
-  }
-
-  // Scroll al final cuando cambian los mensajes
-  useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // 1) Cargar historial de mensajes
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -83,20 +57,19 @@ const StudentChat: React.FC = () => {
       return;
     }
 
-    if (!receiverId || !jobId) return;
-
-    const fetchHistory = async () => {
+    const fetchMatches = async () => {
       try {
-        setLoadingHistory(true);
-        const url = `${API_BASE_URL}/protected/mensajes/${receiverId}?job_id=${jobId}`;
+        setLoading(true);
+        setError(null);
 
-        const res = await fetch(url, {
+        const res = await fetch(MATCHES_ENDPOINT, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         });
+
+        const data = await res.json().catch(() => ({} as any));
 
         if (res.status === 401) {
           logout();
@@ -105,214 +78,78 @@ const StudentChat: React.FC = () => {
         }
 
         if (!res.ok) {
-          console.error("Error cargando historial de mensajes");
+          setError(
+            data.error ||
+              data.message ||
+              "No se pudieron cargar tus matches como estudiante."
+          );
           return;
         }
 
-        const data = await res.json();
-        const mensajes: any[] = data.mensajes || [];
+        const listRaw =
+          (Array.isArray(data.matches) && data.matches) ||
+          (Array.isArray(data.data) && data.data) ||
+          (Array.isArray(data) && data) ||
+          [];
 
-        const receiverNumeric = Number(receiverId);
-
-        const mapped: ChatMessage[] = mensajes.map((m) => {
-          const isFromSelf = m.sender_id !== receiverNumeric;
-          const createdAt = m.fecha
-            ? new Date(m.fecha).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "";
-
-          return {
-            id: m.id,
-            text: m.contenido ?? m.mensaje ?? "",
-            fromSelf: isFromSelf,
-            createdAt,
-          };
-        });
-
-        setMessages(mapped);
+        setMatches(listRaw as StudentMatch[]);
       } catch (err) {
-        console.error("Error historial mensajes:", err);
+        console.error(err);
+        setError("Error de conexión al cargar tus matches.");
       } finally {
-        setLoadingHistory(false);
+        setLoading(false);
       }
     };
 
-    fetchHistory();
-  }, [receiverId, jobId, logout, navigate]);
+    fetchMatches();
+  }, [logout, navigate]);
 
-  // 2) Abrir WebSocket (en dev con StrictMode verás dos conexiones, es normal)
-  useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
-      logout();
-      navigate("/login", { replace: true });
-      return;
-    }
+  const totalMatches = matches.length;
+  const subtitle =
+    totalMatches === 0
+      ? "Aún no tienes matches con empleadores."
+      : totalMatches === 1
+      ? "1 match"
+      : `${totalMatches} matches`;
 
-    if (!receiverId || !jobId) {
-      console.warn("Falta receiverId o jobId en StudentChat");
-      return;
-    }
+  const getJobTitle = (m: StudentMatch) =>
+    m.job_titulo || m.trabajo_titulo || m.titulo || "CameYo sin título";
 
-    const wsBase = API_BASE_URL.replace(/^http/i, "ws");
-    const url = `${wsBase}/mensajes/estudiantes/${receiverId}?jobId=${jobId}&token=${encodeURIComponent(
-      token
-    )}`;
+  const getEmployerName = (m: StudentMatch) => {
+    const fromField = m.empleador_nombre?.trim() || "";
+    const fromNombreApellido = `${m.nombre ?? ""} ${m.apellido ?? ""}`
+      .trim()
+      .replace(/\s+/g, " ");
+    const finalName =
+      fromField || fromNombreApellido || "Empleador CameYa";
+    return finalName;
+  };
 
-    console.log("Student WS URL:", url);
+  const getCompany = (m: StudentMatch) =>
+    m.empresa || m.empleador_empresa || "";
 
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-    setWsStatus("connecting");
+  const getDescription = (m: StudentMatch) =>
+    m.job_descripcion || m.descripcion || "";
 
-    ws.onopen = () => {
-      console.log("Student WS abierto");
-      setWsStatus("open");
+  const getImage = (m: StudentMatch) =>
+    m.foto_empleador || m.foto_perfil || m.foto_job || m.job_foto || "";
 
-      // Si el usuario ya había intentado enviar algo antes de que abriera:
-      if (pendingMessageRef.current) {
-        const msg = pendingMessageRef.current;
-        pendingMessageRef.current = null;
+  const openChat = (match: StudentMatch) => {
+    if (!match.empleador_id) return;
 
-        ws.send(msg);
+    const jobTitle = getJobTitle(match);
+    const employerName = getEmployerName(match);
+    const avatar = getImage(match);
 
-        const now = new Date();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: now.getTime(),
-            text: msg,
-            fromSelf: true,
-            createdAt: now.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          },
-        ]);
-      }
-    };
-
-    ws.onmessage = (event) => {
-      const text = String(event.data);
-      const now = new Date();
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: now.getTime() + Math.random(),
-          text,
-          fromSelf: false,
-          createdAt: now.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
-    };
-
-    ws.onerror = (err) => {
-      console.error("Student WS error", err);
-    };
-
-    ws.onclose = (evt) => {
-      console.log("Student WS cerrado, code:", evt.code, "reason:", evt.reason);
-      setWsStatus("closed");
-      wsRef.current = null;
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [receiverId, jobId, logout, navigate]);
-
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-
-    const ws = wsRef.current;
-
-    // Si el WS aún no está OPEN (por StrictMode o porque tarda),
-    // guardamos el mensaje y dejamos que onopen lo envíe.
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.log("WS aún no OPEN, guardando mensaje pendiente (student)");
-      pendingMessageRef.current = trimmed;
-      setInput("");
-      return;
-    }
-
-    ws.send(trimmed);
-
-    const now = new Date();
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: now.getTime(),
-        text: trimmed,
-        fromSelf: true,
-        createdAt: now.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+    navigate(`/dashboard/student/chat/${match.empleador_id}`, {
+      state: {
+        empleadorId: match.empleador_id,
+        jobId: match.job_id,
+        jobTitle,
+        employerName,
+        avatar,
       },
-    ]);
-
-    setInput("");
-  };
-
-  const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate("/", { replace: true });
-  };
-
-  // Helpers para avatares en cada mensaje
-  const renderEmployerAvatar = () => {
-    if (employerAvatar) {
-      return (
-        <img
-          src={employerAvatar}
-          alt={employerName}
-          className="h-7 w-7 rounded-full object-cover border border-slate-200"
-        />
-      );
-    }
-    const initials = employerName
-      .split(" ")
-      .filter(Boolean)
-      .map((p) => p[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase();
-
-    return (
-      <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-fuchsia-500 to-purple-500 flex items-center justify-center text-[10px] font-semibold text-white">
-        {initials || "E"}
-      </div>
-    );
-  };
-
-  const renderStudentAvatar = () => {
-    if (studentAvatar) {
-      return
-        <img
-          src={studentAvatar}
-          alt="Tú"
-          className="h-7 w-7 rounded-full object-cover border border-slate-200"
-        />;
-    }
-
-    return (
-      <div className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-semibold text-white">
-        {studentInitials}
-      </div>
-    );
+    });
   };
 
   return (
@@ -320,135 +157,123 @@ const StudentChat: React.FC = () => {
       <StudentSidebar onLogout={handleLogout} />
 
       <main className="flex-1 px-4 md:px-10 pt-24 pb-24 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          <button
-            type="button"
-            className="text-xs text-slate-500 mb-3 hover:text-slate-800"
-            onClick={() => navigate(-1)}
-          >
-            ← Volver a matches
-          </button>
-
-          <div className="rounded-3xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)] border border-slate-100 overflow-hidden flex flex-col min-h-[480px]">
-            {/* Header del chat */}
-            <div className="px-6 py-4 bg-gradient-to-r from-pink-50 via-white to-purple-50 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
-                  {employerAvatar ? (
-                    <img
-                      src={employerAvatar}
-                      alt={employerName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-slate-600">
-                      {employerName
-                        .split(" ")
-                        .filter(Boolean)
-                        .map((p) => p[0])
-                        .slice(0, 2)
-                        .join("")
-                        .toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {employerName}
-                  </p>
-                  <p className="text-[11px] text-slate-500">Posición:</p>
-                  <p className="text-[11px] text-slate-700">{jobTitle}</p>
-                  <p className="mt-1 text-[10px] text-slate-400">
-                    Estado:{" "}
-                    {wsStatus === "open"
-                      ? "Conectado"
-                      : wsStatus === "connecting"
-                      ? "Conectando..."
-                      : "Desconectado"}
-                    {loadingHistory && " · Cargando historial..."}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5"
-                onClick={() => console.log("Marcar como completado (student)")}
-              >
-                Marcar como completado
-              </button>
-            </div>
-
-            {/* Lista de mensajes */}
-            <div
-              ref={listRef}
-              className="flex-1 px-4 md:px-6 py-4 space-y-3 overflow-y-auto bg-slate-50/40"
-            >
-              {messages.length === 0 && !loadingHistory && (
-                <p className="text-xs text-slate-400 text-center mt-8">
-                  Aún no hay mensajes. Escribe para coordinar el CameYo.
+        <div className="max-w-5xl mx-auto">
+          {/* Header tipo "Tus Matches" igual que en EmployerMatches */}
+          <header className="mb-8 flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-semibold text-slate-900">
+                Tus Matches
+              </h1>
+              <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+              {totalMatches === 0 && (
+                <p className="text-[11px] text-slate-500 mt-2 max-w-xl">
+                  Cuando tú y un empleador tengan interés mutuo en un CameYo,
+                  aparecerá aquí para que puedan continuar el proceso y luego
+                  chatear desde CameYa.
                 </p>
               )}
+            </div>
+          </header>
 
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex items-end gap-2 ${
-                    m.fromSelf ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  {/* Avatar empleador a la izquierda de sus mensajes */}
-                  {!m.fromSelf && renderEmployerAvatar()}
+          {error && (
+            <div className="mb-4 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+              {error}
+            </div>
+          )}
 
-                  <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${
-                      m.fromSelf
-                        ? "bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white"
-                        : "bg-slate-100 text-slate-800"
-                    }`}
+          {loading ? (
+            <p className="text-sm text-slate-600">Cargando matches...</p>
+          ) : totalMatches === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center shadow-sm">
+              <p className="text-sm font-medium text-slate-700 mb-1">
+                Aún no tienes matches.
+              </p>
+              <p className="text-xs text-slate-500 mb-4">
+                Sigue swpeando CameYos en la pantalla principal. 
+                Cuando haya interés mutuo con un empleador, lo verás aquí
+                y podrás escribirle por chat.
+              </p>
+            </div>
+          ) : (
+            <section className="space-y-4">
+              {matches.map((match, idx) => {
+                const jobTitle = getJobTitle(match);
+                const employerName = getEmployerName(match);
+                const company = getCompany(match);
+                const description = getDescription(match);
+                const imgSrc = getImage(match);
+
+                return (
+                  <article
+                    key={match.id ?? `${match.job_id}-${match.empleador_id}-${idx}`}
+                    className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 md:px-6 py-4 flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
                   >
-                    <p>{m.text}</p>
-                    <p
-                      className={`mt-1 text-[10px] ${
-                        m.fromSelf
-                          ? "text-pink-100/90"
-                          : "text-slate-500/80"
-                      }`}
-                    >
-                      {m.createdAt}
-                    </p>
-                  </div>
+                    {/* Izquierda: avatar + info principal */}
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex-shrink-0">
+                        <div className="h-12 w-12 md:h-14 md:w-14 rounded-full overflow-hidden bg-slate-200">
+                          {imgSrc ? (
+                            <img
+                              src={imgSrc}
+                              alt={employerName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-slate-600">
+                              {employerName
+                                .split(" ")
+                                .filter(Boolean)
+                                .map((p) => p[0])
+                                .slice(0, 2)
+                                .join("")
+                                .toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                  {/* Avatar estudiante a la izquierda de SUS mensajes (quedará a la derecha del contenedor) */}
-                  {m.fromSelf && renderStudentAvatar()}
-                </div>
-              ))}
-            </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="text-sm md:text-base font-semibold text-slate-900 truncate">
+                          {employerName}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {jobTitle}
+                        </p>
+                        {(company || match.ciudad) && (
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {company && <span>{company}</span>}
+                            {company && match.ciudad && " • "}
+                            {match.ciudad && <span>{match.ciudad}</span>}
+                          </p>
+                        )}
+                        {description && (
+                          <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
+                            {description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-            {/* Input inferior */}
-            <div className="px-4 md:px-6 py-3 border-t border-slate-200 bg-white flex items-center gap-3">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Escribe un mensaje..."
-                className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!input.trim()}
-                className="h-9 w-9 rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 flex items-center justify-center text-white text-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ➤
-              </button>
-            </div>
-          </div>
+                    {/* Derecha: botón Enviar mensaje */}
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-1 rounded-full border border-primary/80 px-3.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/5 active:scale-[0.98] transition"
+                        onClick={() => openChat(match)}
+                      >
+                        <span className="text-xs">💬</span>
+                        <span>Enviar mensaje</span>
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          )}
         </div>
       </main>
     </div>
   );
 };
 
-export default StudentChat;
+export default StudentMatches;

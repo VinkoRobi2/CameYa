@@ -334,32 +334,40 @@ const StudentDashboardHome: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 text-slate-900 flex">
       <StudentSidebar onLogout={handleLogout} />
 
-      <main className="flex-1 px-4 md:px-10 pt-24 pb-24 overflow-y-auto">
+      <main className="flex-1 px-4 md:px-10 pt-20 pb-10 overflow-y-auto flex flex-col items-center">
         {/* Header */}
-        <header className="mb-8 flex items-center justify-between gap-4">
+        <header className="w-full max-w-5xl mb-6 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900">
-              Encuentra tu próximo CameYo
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-pink-500">
+              Descubrir CameYos
+            </p>
+            <h1 className="mt-1 text-2xl md:text-3xl font-semibold text-slate-900">
+              Encuentra tu próximo trabajo flash
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="mt-1 text-sm text-slate-500">
               {trabajos.length > 0
-                ? `${trabajos.length} CameYos disponibles para ti`
-                : "No hay CameYos disponibles por ahora"}
+                ? `${trabajos.length} CameYos disponibles para ti ahora mismo`
+                : "Te avisamos cuando haya nuevos CameYos para ti."}
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => setShowFilters((prev) => !prev)}
-            className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white shadow-sm border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/80 shadow-sm border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
           >
-            <span>Filters</span>
+            <span>Filtros</span>
+            <span className="h-5 w-[1px] bg-slate-200" />
+            <span className="text-[11px] text-slate-400">
+              {filtersApplied ? "Aplicados" : "Todos"}
+            </span>
           </button>
         </header>
 
+        {/* Panel de filtros flotante */}
         {showFilters && (
-          <div className="mb-6 flex justify-end">
-            <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-lg p-4 text-xs space-y-3">
+          <div className="w-full max-w-5xl mb-6 flex justify-end">
+            <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl p-4 text-xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-800">
                   Filtrar CameYos
@@ -450,55 +458,72 @@ const StudentDashboardHome: React.FC = () => {
           </div>
         )}
 
+        {/* Errores */}
         {error && (
-          <div className="mb-4 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+          <div className="w-full max-w-xl mb-4 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
             {error}
           </div>
         )}
 
+        {/* Contenido principal */}
         {loading ? (
-          <p className="text-sm text-slate-600">Cargando trabajos...</p>
+          <p className="mt-10 text-sm text-slate-600">Cargando CameYos...</p>
         ) : trabajos.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white/80 px-6 py-10 text-center shadow-sm">
-            <p className="text-sm font-medium text-slate-700 mb-1">
-              {filtersApplied
-                ? "No hay CameYos que coincidan con estos filtros."
-                : "No hay CameYos nuevos disponibles por ahora."}
-            </p>
-            <p className="text-xs text-slate-500">
-              {filtersApplied
-                ? "Prueba ajustando o limpiando los filtros para ver más opciones."
-                : "Cuando se publiquen nuevos trabajos, los verás aquí para seguir swippeando."}
-            </p>
+          // 🔄 Estado sin CameYos – estilo "No more jobs to show"
+          <div className="mt-16 w-full flex flex-col items-center">
+            <div className="max-w-md w-full bg-white/80 border border-slate-100 rounded-3xl shadow-xl px-8 py-16 text-center">
+              <div className="flex items-center justify-center mb-5">
+                <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-pink-500 via-fuchsia-500 to-purple-500 flex items-center justify-center shadow-lg">
+                  <span className="text-3xl">🎉</span>
+                </div>
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900 mb-1">
+                No hay CameYos para mostrar
+              </h2>
+              <p className="text-sm text-slate-500 mb-6">
+                {filtersApplied
+                  ? "No encontramos CameYos que coincidan con esos filtros."
+                  : "Vuelve más tarde para ver nuevos CameYos publicados."}
+              </p>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 px-6 py-2.5 text-sm font-medium text-white shadow-md hover:brightness-105"
+              >
+                Mostrar CameYos otra vez
+              </button>
+            </div>
           </div>
         ) : (
           <>
-            {/* Card principal */}
-            <section className="mb-10 flex flex-col items-center">
-              <div className="flex items-center justify-center gap-4 w-full max-w-5xl">
-                {/* Flecha izquierda */}
-                <button
-                  type="button"
-                  onClick={goPrevJob}
-                  disabled={currentIndex === 0}
-                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  ◀
-                </button>
+            {/* Card tipo SwipeHire centrado */}
+            <section className="mt-4 w-full flex flex-col items-center">
+              {/* Pequeño subtítulo sobre el CameYo actual */}
+              {trabajoActual && (
+                <div className="mb-4 text-xs text-slate-500">
+                  CameYos disponibles en{" "}
+                  <span className="font-semibold text-slate-700">
+                    {trabajoActual.ciudad || "tu zona"}
+                  </span>
+                </div>
+              )}
 
-                {/* Card swipeable */}
-                <div className="flex-1 max-w-4xl">
+              <div className="w-full flex justify-center">
+                <div className="w-full max-w-xl">
                   {trabajoActual && (
                     <AnimatePresence mode="popLayout">
                       <motion.div
                         key={trabajoActual.id}
-                        className="relative bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden flex flex-col md:flex-row"
+                        className="relative bg-white rounded-[32px] shadow-xl border border-slate-100 overflow-hidden"
                         drag="x"
                         dragConstraints={{ left: 0, right: 0 }}
                         dragElastic={0.2}
                         onDragEnd={(_, info) => {
                           const threshold = 120;
-                          if (info.offset.x > threshold || info.velocity.x > 500) {
+                          if (
+                            info.offset.x > threshold ||
+                            info.velocity.x > 500
+                          ) {
                             handleSwipe("like");
                           } else if (
                             info.offset.x < -threshold ||
@@ -507,17 +532,17 @@ const StudentDashboardHome: React.FC = () => {
                             handleSwipe("dislike");
                           }
                         }}
-                        initial={{ opacity: 0, x: 40, rotate: 3 }}
-                        animate={{ opacity: 1, x: 0, rotate: 0 }}
+                        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{
                           opacity: 0,
                           x: lastDirection === "right" ? 200 : -200,
                           rotate: lastDirection === "right" ? 8 : -8,
                         }}
-                        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                        transition={{ type: "spring", stiffness: 280, damping: 26 }}
                       >
-                        {/* Imagen izquierda */}
-                        <div className="relative w-full md:w-1/2 h-60 md:h-[380px]">
+                        {/* Imagen del trabajo */}
+                        <div className="relative h-64 md:h-72 w-full">
                           {trabajoActual.imagen_trabajo_url ? (
                             <img
                               src={trabajoActual.imagen_trabajo_url}
@@ -530,42 +555,46 @@ const StudentDashboardHome: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Badge estado */}
-                          <div className="absolute top-3 left-3 inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 shadow-sm">
+                          {/* Estado / badge */}
+                          <div className="absolute top-4 left-4 inline-flex items-center rounded-full bg-emerald-50/95 px-3 py-1 text-[11px] font-medium text-emerald-700 shadow-sm">
                             {trabajoActual.estado === "abierto"
-                              ? "Activo"
+                              ? "CameYo activo"
                               : trabajoActual.estado}
                           </div>
+
+                          {/* Foto de empleador */}
+                          {trabajoActual.foto_empleador_url && (
+                            <div className="absolute bottom-[-24px] right-5 h-12 w-12 rounded-full border-2 border-white shadow-md overflow-hidden bg-white">
+                              <img
+                                src={trabajoActual.foto_empleador_url}
+                                alt="Empleador"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
                         </div>
 
-                        {/* Info derecha */}
-                        <div className="flex-1 p-5 md:p-6 flex flex-col gap-4">
+                        {/* Contenido del card */}
+                        <div className="px-6 pt-7 pb-6 space-y-5">
+                          {/* Título / empresa */}
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <h2 className="text-lg md:text-xl font-semibold text-slate-900">
                                 {trabajoActual.titulo}
                               </h2>
-                              <p className="text-xs text-slate-500 mt-0.5">
+                              <p className="mt-1 text-xs text-slate-500">
                                 {trabajoActual.nombre_empresa ||
                                   trabajoActual.nombre_empleador ||
                                   "Empleador CameYa"}
                               </p>
                             </div>
-
-                            {trabajoActual.foto_empleador_url && (
-                              <img
-                                src={trabajoActual.foto_empleador_url}
-                                alt="Empleador"
-                                className="h-10 w-10 rounded-full object-cover border border-slate-200"
-                              />
-                            )}
                           </div>
 
-                          {/* Chips */}
+                          {/* Chips principales */}
                           <div className="flex flex-wrap gap-2 text-[11px]">
-                            {trabajoActual.ciudad && (
-                              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-slate-600">
-                                📍 {trabajoActual.ciudad}
+                            {trabajoActual.categoria && (
+                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-3 py-1 text-fuchsia-600">
+                                💼 {trabajoActual.categoria}
                               </span>
                             )}
                             {trabajoActual.salario && (
@@ -583,26 +612,33 @@ const StudentDashboardHome: React.FC = () => {
                                 🕒 {modalidadActual}
                               </span>
                             )}
-                            {trabajoActual.categoria && (
-                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-3 py-1 text-fuchsia-600">
-                                {trabajoActual.categoria}
-                              </span>
-                            )}
                           </div>
 
-                          {/* Descripción */}
-                          <div className="space-y-2 text-xs text-slate-600">
-                            <p className="line-clamp-3">
-                              {trabajoActual.descripcion ||
-                                "Sin descripción detallada."}
+                          {/* Sección Sobre el CameYo */}
+                          <div className="space-y-1 text-xs text-slate-600">
+                            <p className="flex items-center gap-1 font-semibold text-[11px] text-slate-700">
+                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-50 text-pink-500 text-[11px]">
+                                i
+                              </span>
+                              Sobre el CameYo
                             </p>
+                            <p className="text-xs leading-relaxed line-clamp-3">
+                              {trabajoActual.descripcion ||
+                                "Este empleador aún no ha añadido una descripción detallada."}
+                            </p>
+                          </div>
 
+                          {/* Requisitos / habilidades */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                             {parseToList(trabajoActual.requisitos).length > 0 && (
                               <div>
-                                <p className="font-semibold text-[11px] text-slate-700 mb-1">
-                                  Requisitos:
+                                <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-700">
+                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white text-[10px]">
+                                    ✓
+                                  </span>
+                                  Requisitos
                                 </p>
-                                <ul className="list-disc list-inside space-y-0.5">
+                                <ul className="list-disc list-inside space-y-0.5 text-slate-600">
                                   {parseToList(trabajoActual.requisitos).map(
                                     (item, idx) => (
                                       <li key={idx}>{item}</li>
@@ -615,105 +651,97 @@ const StudentDashboardHome: React.FC = () => {
                             {parseToList(trabajoActual.habilidades).length >
                               0 && (
                               <div>
-                                <p className="font-semibold text-[11px] text-slate-700 mb-1">
-                                  Habilidades deseadas:
+                                <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-700">
+                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-purple-50 text-purple-600 text-[11px]">
+                                    ✧
+                                  </span>
+                                  Habilidades deseadas
                                 </p>
-                                <ul className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1.5">
                                   {parseToList(trabajoActual.habilidades).map(
                                     (h, idx) => (
-                                      <li
+                                      <span
                                         key={idx}
                                         className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-700"
                                       >
                                         {h}
-                                      </li>
+                                      </span>
                                     )
                                   )}
-                                </ul>
+                                </div>
                               </div>
                             )}
                           </div>
 
-                          {/* Botones de acción */}
-                          <div className="mt-2 flex flex-col md:flex-row items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 w-full md:w-auto">
-                              <button
-                                type="button"
-                                onClick={() => handleSwipe("dislike")}
-                                className="flex-1 inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 md:flex-none md:w-28"
-                              >
-                                ✕ No me interesa
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSwipe("like")}
-                                className="flex-1 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 px-4 py-2 text-sm font-medium text-white shadow-md hover:brightness-105 md:flex-none md:w-32"
-                              >
-                                ♥ Me interesa
-                              </button>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => openJobModal(trabajoActual)}
-                              className="text-[11px] text-slate-500 hover:text-slate-800"
-                            >
-                              Ver detalles completos
-                            </button>
+                          {/* Mensaje inferior tipo "swipeó tu job" */}
+                          <div className="mt-1 rounded-2xl bg-emerald-50 text-[11px] text-emerald-700 px-3 py-2 flex items-center gap-2">
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs">
+                              ♥
+                            </span>
+                            <span>
+                              Si marcas este CameYo con interés, el empleador
+                              podrá verte en la lista de candidatos potenciales.
+                            </span>
                           </div>
                         </div>
                       </motion.div>
                     </AnimatePresence>
                   )}
                 </div>
+              </div>
 
-                {/* Flecha derecha */}
+              {/* Botones grandes de acción */}
+              <div className="mt-6 flex items-center justify-center gap-8">
                 <button
                   type="button"
-                  onClick={goNextJob}
-                  disabled={currentIndex >= trabajos.length - 1}
-                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => handleSwipe("dislike")}
+                  className="h-14 w-14 flex items-center justify-center rounded-full bg-white border border-red-100 text-red-500 text-xl shadow-md hover:bg-red-50"
                 >
-                  ▶
+                  ✕
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwipe("like")}
+                  className="h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 text-white text-2xl shadow-lg hover:brightness-105"
+                >
+                  ♥
                 </button>
               </div>
 
-              {/* Indicador de posición */}
-              <div className="mt-4 text-[11px] text-slate-500">
-                CameYo {currentIndex + 1} de {trabajos.length}
+              {/* Indicador de posición y paginación simple */}
+              <div className="mt-4 text-[11px] text-slate-500 flex flex-col items-center gap-1">
+                <span>
+                  {currentIndex + 1}/{trabajos.length}
+                </span>
                 {totalPages > 1 && (
-                  <span className="ml-2">
-                    | Página {page} de {totalPages}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={prevPage}
+                      disabled={page === 1}
+                      className="px-3 py-1 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-[11px]"
+                    >
+                      Página anterior
+                    </button>
+                    <span>
+                      Página {page} de {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={nextPage}
+                      disabled={page === totalPages}
+                      className="px-3 py-1 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-[11px]"
+                    >
+                      Siguiente página
+                    </button>
+                  </div>
                 )}
               </div>
-
-              {/* Paginación básica */}
-              {totalPages > 1 && (
-                <div className="mt-3 flex items-center gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={prevPage}
-                    disabled={page === 1}
-                    className="px-3 py-1 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    type="button"
-                    onClick={nextPage}
-                    disabled={page === totalPages}
-                    className="px-3 py-1 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Siguiente
-                  </button>
-                </div>
-              )}
             </section>
           </>
         )}
 
-        {/* Modal simple para detalles (si lo quieres usar después) */}
+        {/* Modal simple para detalles */}
         <AnimatePresence>
           {selectedJob && (
             <motion.div
@@ -730,7 +758,6 @@ const StudentDashboardHome: React.FC = () => {
                 exit={{ scale: 0.9, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Aquí podrías reusar parte del contenido del card para detalle */}
                 <div className="p-6">
                   <h2 className="text-lg font-semibold text-slate-900 mb-2">
                     {selectedJob.titulo}
