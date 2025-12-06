@@ -19,14 +19,18 @@ import EmployerCompleteRegister from "./auth/EmployerCompleteRegister";
 
 import StudentDashboardHome from "./auth/studentDashboard/StudentDashboardHome";
 import StudentProfile from "./auth/studentDashboard/StudentProfile";
-import StudentApplications from "./auth/studentDashboard/StudentApplications";
-import StudentCompletedJobs from "./auth/studentDashboard/StudentCompletedJobs";
+import StudentMatches from "./auth/studentDashboard/StudentMatches";
+import StudentsBrowseEmployers from "./auth/studentDashboard/StudentsBrowseEmployers";
 
 import EmployerStudentsHome from "./auth/employerDashboard/EmployerStudentsHome";
 import EmployerCreateJob from "./auth/employerDashboard/EmployerCreateJob";
-import EmployerPosts from "./auth/employerDashboard/EmployerPosts";
+import EmployerMatches from "./auth/employerDashboard/EmployerMatches";
 import EmployerHistory from "./auth/employerDashboard/EmployerHistory";
 import EmployerProfile from "./auth/employerDashboard/EmployerProfile";
+
+// NUEVO: pantallas de chat
+import EmployerChat from "./auth/chat/EmployerChat";
+import StudentChat from "./auth/chat/StudentChat";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 
@@ -147,21 +151,33 @@ const AnimatedRoutes: React.FC = () => {
           }
         />
         <Route
-          path="/dashboard/student/applications"
+          path="/dashboard/student/matches"
           element={
             <ProtectedRoute allowedRoles={["student"]}>
               <PageTransition>
-                <StudentApplications />
+                <StudentMatches />
               </PageTransition>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/dashboard/student/completed"
+          path="/dashboard/student/browse-employers"
           element={
             <ProtectedRoute allowedRoles={["student"]}>
               <PageTransition>
-                <StudentCompletedJobs />
+                <StudentsBrowseEmployers />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Chat estudiante (protegidísimo) */}
+        <Route
+          path="/dashboard/student/chat/:receiverId"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <PageTransition>
+                <StudentChat />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -211,23 +227,23 @@ const AnimatedRoutes: React.FC = () => {
           }
         />
 
-        {/* Mis publicaciones (empleadores) */}
+        {/* Mis matches (empleadores) */}
         <Route
-          path="/dashboard/employer/person/posts"
+          path="/dashboard/employer/person/matches"
           element={
             <ProtectedRoute allowedRoles={["employer"]}>
               <PageTransition>
-                <EmployerPosts />
+                <EmployerMatches />
               </PageTransition>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/dashboard/employer/company/posts"
+          path="/dashboard/employer/company/matches"
           element={
             <ProtectedRoute allowedRoles={["employer"]}>
               <PageTransition>
-                <EmployerPosts />
+                <EmployerMatches />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -262,6 +278,18 @@ const AnimatedRoutes: React.FC = () => {
             <ProtectedRoute allowedRoles={["employer"]}>
               <PageTransition>
                 <EmployerHistory />
+              </PageTransition>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Chat empleador (vale para persona / empresa) */}
+        <Route
+          path="/dashboard/employer/chat/:receiverId"
+          element={
+            <ProtectedRoute allowedRoles={["employer"]}>
+              <PageTransition>
+                <EmployerChat />
               </PageTransition>
             </ProtectedRoute>
           }

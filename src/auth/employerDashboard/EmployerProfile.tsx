@@ -429,7 +429,7 @@ const EmployerProfile: React.FC = () => {
     <div className="min-h-screen bg-slate-100 flex">
       <EmployerSidebar mode={mode} onLogout={handleLogout} />
 
-      <main className="flex-1 bg-slate-50 px-4 md:px-8 py-8 overflow-y-auto">
+      <main className="flex-1 px-4 md:px-10 pt-24 pb-24 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           {loading && (
             <div className="flex items-center justify-center py-16">
