@@ -235,7 +235,7 @@ const EmployerChat: React.FC = () => {
                   <p className="text-sm font-semibold text-slate-900">
                     {studentName}
                   </p>
-                  <p className="text-[11px] text-slate-500">Postulación a:</p>
+                  <p className="text-[11px] text-slate-500">Swipeó en:</p>
                   <p className="text-[11px] text-slate-700">{jobTitle}</p>
                   <p className="mt-1 text-[10px] text-slate-400">
                     Estado:{" "}
