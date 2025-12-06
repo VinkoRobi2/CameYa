@@ -62,7 +62,7 @@ const EmployerCreateJob: React.FC = () => {
         // reader.result ya viene en formato data:image/...;base64,...
         setForm((prev) => ({
           ...prev,
-          foto_trabajo_base64: reader.result,
+          foto_trabajo_base64: reader.result as string,
         }));
         setJobImagePreview(reader.result);
       }
