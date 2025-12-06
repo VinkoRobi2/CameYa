@@ -159,8 +159,6 @@ const EmployerMatches: React.FC = () => {
     m.estudiante_foto_perfil ||
     "";
 
-  const getIdLabel = (value?: number) =>
-    value != null ? `ID ${value}` : "ID N/D";
 
   return (
     <div className="min-h-screen flex bg-slate-50">
