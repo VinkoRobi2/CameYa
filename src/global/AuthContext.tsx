@@ -25,11 +25,53 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// 🔐 Helper para reconstruir el usuario desde localStorage
+const getInitialUserFromStorage = (): User | null => {
+  if (typeof window === "undefined") return null;
+
+  const token = localStorage.getItem("auth_token");
+  const storedUserStr = localStorage.getItem("auth_user");
+
+  if (!token || !storedUserStr) return null;
+
+  try {
+    const raw = JSON.parse(storedUserStr);
+
+    const tipoCuenta = raw.tipo_cuenta || raw.role;
+
+    const role: Role =
+      tipoCuenta === "estudiante" || tipoCuenta === "student"
+        ? "student"
+        : tipoCuenta === "empleador" || tipoCuenta === "employer"
+        ? "employer"
+        : null;
+
+    if (!role) return null;
+
+    const normalizedUser: User = {
+      id: String(raw.user_id ?? raw.id ?? ""),
+      name:
+        raw.nombre || raw.apellido
+          ? `${raw.nombre ?? ""} ${raw.apellido ?? ""}`.trim()
+          : raw.name ?? "",
+      email: raw.email,
+      role,
+    };
+
+    return normalizedUser;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role>(null);
+  // 🧠 Al iniciar, tratamos de restaurar la sesión desde localStorage
+  const [user, setUser] = useState<User | null>(() =>
+    getInitialUserFromStorage()
+  );
+  const [role, setRole] = useState<Role>(user?.role ?? null);
 
   const login = (u: User) => {
     setUser(u);
@@ -40,8 +82,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
     setRole(null);
     // 👇 importante: limpiar sesión persistida
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+    }
   };
 
   const value: AuthContextValue = { user, role, setRole, login, logout };

@@ -14,17 +14,18 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Actualización de estilos para coincidir con el diseño "Descubrir" (degradado activo)
   const btnClasses = (active: boolean) =>
     [
-      "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left",
+      "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200",
       active
-        ? "bg-primary/10 text-primary font-medium"
-        : "text-slate-600 hover:bg-slate-50",
+        ? "bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-medium shadow-md" // Estilo activo visual
+        : "text-slate-600 hover:bg-slate-50 font-normal",
     ].join(" ");
 
   const handleNavigate = (path: string) => {
     navigate(path);
-    setIsOpen(false); // cerrar menú en móvil al navegar
+    setIsOpen(false);
   };
 
   const handleLogoutClick = () => {
@@ -33,9 +34,8 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
   };
 
   return (
-    // Wrapper: en desktop fija ancho y altura de pantalla
     <div className="relative w-0 md:w-64 md:flex-shrink-0 md:h-screen md:min-h-screen">
-      {/* Botón flotante para abrir menú en móvil */}
+      {/* Botón flotante móvil */}
       <button
         type="button"
         onClick={() => setIsOpen(true)}
@@ -45,7 +45,7 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
         <span>Menú estudiante</span>
       </button>
 
-      {/* Overlay en móvil */}
+      {/* Overlay móvil */}
       {isOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/30 md:hidden"
@@ -58,11 +58,10 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
         className={[
           "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-200",
           isOpen ? "translate-x-0" : "-translate-x-full",
-          // En desktop: estática, ocupa toda la pantalla en altura
           "md:static md:translate-x-0 md:h-screen md:min-h-screen",
         ].join(" ")}
       >
-        {/* Header con logo CameYa arriba a la izquierda */}
+        {/* Header */}
         <div className="px-6 py-5 border-b border-slate-200 flex items-center gap-3">
           <img src={svg_logo} alt="CameYa" className="h-8 w-auto" />
           <div>
@@ -71,49 +70,50 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 text-sm">
+        {/* Navegación Principal */}
+        <nav className="flex-1 px-4 py-6 space-y-2 text-sm">
+          {/* 1. Inicio -> Descubrir */}
           <button
             onClick={() => handleNavigate("/dashboard/student")}
             className={btnClasses(isActive("/dashboard/student"))}
           >
-            Inicio
+            <span className="text-lg">🧭</span>
+            <span>Descubrir</span>
           </button>
 
+          {/* 2. Mis postulaciones -> Matches */}
           <button
             onClick={() => handleNavigate("/dashboard/student/applications")}
             className={btnClasses(
               isActive("/dashboard/student/applications")
             )}
           >
-            Mis postulaciones
+            <span className="text-lg">🔗</span>
+            <span>Matches</span>
           </button>
 
-          <button
-            onClick={() => handleNavigate("/dashboard/student/completed")}
-            className={btnClasses(
-              isActive("/dashboard/student/completed")
-            )}
-          >
-            Trabajos completados
-          </button>
-
+          {/* 4. Mi perfil */}
           <button
             onClick={() => handleNavigate("/dashboard/student/profile")}
-            className={btnClasses(
-              isActive("/dashboard/student/profile")
-            )}
+            className={btnClasses(isActive("/dashboard/student/profile"))}
           >
-            Mi perfil
+            <span className="text-lg">👤</span>
+            <span>Mi perfil</span>
           </button>
         </nav>
 
+        {/* Footer / Configuración */}
         <div className="px-3 pb-4 pt-2 border-t border-slate-200 text-sm space-y-1">
-          <button className={btnClasses(false)}>Configuración</button>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 text-left">
+            <span className="text-lg">⚙️</span>
+            <span>Configuración</span>
+          </button>
           <button
             onClick={handleLogoutClick}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 text-left"
           >
-            Cerrar sesión
+            <span className="text-lg">🚪</span>
+            <span>Cerrar sesión</span>
           </button>
         </div>
       </aside>

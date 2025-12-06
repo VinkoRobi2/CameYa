@@ -22,12 +22,16 @@ interface TrabajoPublico {
   postulacion_contratada_id: number | null;
   estado: string;
 
-  // 🔹 Campos que llegan del backend
+  // Backend extra
   foto_job?: string;
   foto_empleador?: string;
   foto_perfil?: string;
+  nombre_empleador?: string;
+  apellido_empleador?: string;
+  rating_empleador?: number;
+  presencial?: boolean;
 
-  // 🔹 Campos normalizados para el front
+  // Normalizados
   imagen_trabajo_url?: string;
   foto_empleador_url?: string;
 }
@@ -52,7 +56,7 @@ const JOBS_ENDPOINT = `${API_BASE_URL}/protected/todos_trabajos`;
 const INTERESES_ENDPOINT = `${API_BASE_URL}/protected/mis-intereses`;
 const GUARDAR_INTERES_ENDPOINT = `${API_BASE_URL}/protected/guardar-interes`;
 
-// 🔹 Limpia URLs rotas tipo "http://.../uploads/http://.../uploads/job_9.png"
+// Limpia URLs tipo "http://.../uploads/http://.../uploads/job_9.png"
 const normalizeFotoUrl = (raw?: string): string | undefined => {
   if (!raw) return undefined;
   const trimmed = raw.trim();
@@ -81,6 +85,9 @@ const StudentDashboardHome: React.FC = () => {
   const [likedJobIds, setLikedJobIds] = useState<number[]>([]);
   const [discardedJobIds, setDiscardedJobIds] = useState<number[]>([]);
   const [lastDirection, setLastDirection] = useState<"left" | "right">("right");
+
+  // 🔥 Estado solo visual para feedback de like/dislike
+  const [feedback, setFeedback] = useState<"like" | "dislike" | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -171,7 +178,6 @@ const StudentDashboardHome: React.FC = () => {
         const jobsRaw: any[] = dataJobs.jobs || [];
         setTotalPages(dataJobs.total_pages || 1);
 
-        // 🔹 Normalizamos imagen del job y foto del empleador
         const jobsNormalized: TrabajoPublico[] = jobsRaw.map((job: any) => ({
           ...job,
           imagen_trabajo_url: normalizeFotoUrl(
@@ -198,6 +204,13 @@ const StudentDashboardHome: React.FC = () => {
 
     fetchData();
   }, [page, logout, navigate]);
+
+  // ⏱ Ocultar feedback después de un rato
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), 900);
+    return () => clearTimeout(t);
+  }, [feedback]);
 
   const nextPage = () => setPage((p) => (p < totalPages ? p + 1 : p));
   const prevPage = () => setPage((p) => (p > 1 ? p - 1 : 1));
@@ -227,6 +240,9 @@ const StudentDashboardHome: React.FC = () => {
     const job = trabajos[currentIndex];
     setLastDirection(action === "like" ? "right" : "left");
 
+    // 👇 Dispara animación visual
+    setFeedback(action);
+
     if (action === "like") {
       setLikedJobIds((prev) =>
         prev.includes(job.id) ? prev : [...prev, job.id]
@@ -252,21 +268,55 @@ const StudentDashboardHome: React.FC = () => {
 
   const trabajoActual = trabajos[currentIndex];
 
+  const getEmployerName = (job: TrabajoPublico | null) => {
+    if (!job) return "";
+    const full = `${job.nombre_empleador ?? ""} ${
+      job.apellido_empleador ?? ""
+    }`.trim();
+    return full || `Empleador #${job.empleador_id}`;
+  };
+
+  const getModalidadLabel = (job: TrabajoPublico | null) => {
+    if (!job) return "";
+    if (typeof job.presencial === "boolean") {
+      return job.presencial ? "Presencial" : "No presencial";
+    }
+    if (job.modalidad && job.modalidad.trim().length > 0) {
+      return job.modalidad.trim();
+    }
+    return "";
+  };
+
+  const modalidadActual = getModalidadLabel(trabajoActual);
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 text-slate-900 flex">
       <StudentSidebar onLogout={handleLogout} />
 
-      <main className="flex-1 px-6 md:px-8 py-8 overflow-y-auto">
-        <header className="mb-6">
-          <h1 className="text-xl font-semibold">Explorar CameYos</h1>
-          <p className="text-sm text-slate-600">
-            Desliza entre trabajos como si fuera Tinder: marca los que te
-            interesan y descarta los que no encajan contigo.
-          </p>
+      <main className="flex-1 px-4 md:px-10 py-8 overflow-y-auto">
+        {/* Header */}
+        <header className="mb-8 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900">
+              Encuentra tu próximo CameYo
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              {trabajos.length > 0
+                ? `${trabajos.length} CameYos disponibles para ti`
+                : "No hay CameYos disponibles por ahora"}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white shadow-sm border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <span>Filters</span>
+          </button>
         </header>
 
         {error && (
-          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+          <div className="mb-4 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
             {error}
           </div>
         )}
@@ -274,24 +324,25 @@ const StudentDashboardHome: React.FC = () => {
         {loading ? (
           <p className="text-sm text-slate-600">Cargando trabajos...</p>
         ) : trabajos.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white/80 px-6 py-10 text-center shadow-sm">
             <p className="text-sm font-medium text-slate-700 mb-1">
               No hay CameYos nuevos disponibles por ahora.
             </p>
             <p className="text-xs text-slate-500">
-              Cuando se publiquen nuevos trabajos, los verás aquí para
-              seguir swippeando.
+              Cuando se publiquen nuevos trabajos, los verás aquí para seguir
+              swippeando.
             </p>
           </div>
         ) : (
           <>
-            <section className="mb-6 flex flex-col items-center">
-              <div className="flex items-center justify-center gap-4 w-full max-w-3xl">
+            {/* Card principal */}
+            <section className="mb-10 flex flex-col items-center">
+              <div className="flex items-center justify-center gap-4 w-full max-w-5xl">
                 <button
                   type="button"
                   onClick={goPrevJob}
                   disabled={currentIndex === 0}
-                  className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
                   ←
                 </button>
@@ -300,7 +351,7 @@ const StudentDashboardHome: React.FC = () => {
                   {trabajoActual && (
                     <motion.article
                       key={trabajoActual.id}
-                      className="relative bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-md hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer w-full"
+                      className="relative bg-white rounded-[32px] overflow-hidden border border-slate-200 shadow-2xl hover:shadow-[0_24px_60px_rgba(15,23,42,0.18)] transition-all duration-200 flex flex-col md:flex-row w-full cursor-pointer"
                       drag="x"
                       dragConstraints={{ left: 0, right: 0 }}
                       dragElastic={0.2}
@@ -315,18 +366,55 @@ const StudentDashboardHome: React.FC = () => {
                           handleSwipe("dislike");
                         }
                       }}
-                      initial={{ opacity: 0, x: 40, rotate: 4 }}
+                      initial={{ opacity: 0, x: 40, rotate: 3 }}
                       animate={{ opacity: 1, x: 0, rotate: 0 }}
                       exit={{
                         opacity: 0,
                         x: lastDirection === "right" ? 200 : -200,
-                        rotate: lastDirection === "right" ? 12 : -12,
+                        rotate: lastDirection === "right" ? 10 : -10,
                       }}
                       transition={{ duration: 0.25 }}
-                      whileDrag={{ scale: 1.02, rotate: 3 }}
+                      whileDrag={{ scale: 1.02, rotate: 2 }}
                       onClick={() => openJobModal(trabajoActual)}
                     >
-                      <div className="relative h-56 w-full">
+                      {/* Overlay grande de corazón/X al hacer swipe */}
+                      <AnimatePresence>
+                        {feedback === "like" && (
+                          <motion.div
+                            key="like-overlay"
+                            initial={{ opacity: 0, scale: 0.7 }}
+                            animate={{ opacity: 0.8, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.7 }}
+                            transition={{ duration: 0.25 }}
+                            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                          >
+                            <div className="rounded-full bg-gradient-to-tr from-pink-500 via-fuchsia-500 to-purple-500/90 px-6 py-4 shadow-2xl border-2 border-white">
+                              <span className="text-3xl md:text-4xl text-white">
+                                ♥
+                              </span>
+                            </div>
+                          </motion.div>
+                        )}
+                        {feedback === "dislike" && (
+                          <motion.div
+                            key="dislike-overlay"
+                            initial={{ opacity: 0, scale: 0.7 }}
+                            animate={{ opacity: 0.8, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.7 }}
+                            transition={{ duration: 0.25 }}
+                            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                          >
+                            <div className="rounded-full bg-white/95 px-6 py-4 shadow-2xl border-2 border-red-400">
+                              <span className="text-3xl md:text-4xl text-red-500">
+                                ✕
+                              </span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Imagen izquierda */}
+                      <div className="relative w-full md:w-1/2 h-60 md:h-[380px]">
                         {trabajoActual.imagen_trabajo_url ? (
                           <img
                             src={trabajoActual.imagen_trabajo_url}
@@ -334,90 +422,124 @@ const StudentDashboardHome: React.FC = () => {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="h-full w-full bg-gradient-to-tr from-primary to-sky-400" />
+                          <div className="h-full w-full bg-gradient-to-tr from-pink-400 via-purple-400 to-indigo-400" />
                         )}
 
-                        <div className="absolute inset-0 bg-black/20" />
-
-                        <div className="absolute inset-0 flex flex-col justify-end px-4 pb-4 pt-10">
-                          <p className="text-[11px] uppercase tracking-wide text-white/80 mb-1">
-                            {trabajoActual.categoria || "CameYo"}
-                          </p>
-                          <h2 className="text-lg font-semibold text-white leading-tight line-clamp-2">
-                            {trabajoActual.titulo || "Trabajo sin título"}
-                          </h2>
-                          <p className="text-[11px] text-white/80 mt-1">
-                            {(trabajoActual.ciudad &&
-                            trabajoActual.ciudad.trim().length > 0
-                              ? trabajoActual.ciudad
-                              : "Ciudad no especificada") +
-                              " · " +
-                              (trabajoActual.modalidad &&
-                              trabajoActual.modalidad.trim().length > 0
-                                ? trabajoActual.modalidad
-                                : "Modalidad no especificada")}
-                          </p>
+                        <div className="absolute top-4 left-4">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white/90 backdrop-blur px-3 py-1 text-[11px] font-medium text-slate-700 shadow-sm">
+                            <span className="inline-block h-6 w-6 rounded-full bg-gradient-to-tr from-pink-500 to-purple-500" />
+                            CameYo
+                          </span>
                         </div>
                       </div>
 
-                      <div className="p-4 flex flex-col gap-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-xs text-slate-600">
-                            <p className="font-semibold text-slate-800">
+                      {/* Detalles derecha */}
+                      <div className="flex-1 px-6 md:px-8 py-6 flex flex-col gap-4 justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h2 className="text-lg md:text-xl font-semibold text-slate-900">
+                                {trabajoActual.titulo || "Trabajo sin título"}
+                              </h2>
+                              <p className="text-sm text-slate-500">
+                                {getEmployerName(trabajoActual)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-700">
+                              <span>⭐</span>
+                              <span>
+                                {typeof trabajoActual.rating_empleador ===
+                                  "number"
+                                  ? trabajoActual.rating_empleador.toFixed(1)
+                                  : "0.0"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-700">
                               {trabajoActual.salario &&
                               trabajoActual.salario.trim().length > 0
                                 ? `$${trabajoActual.salario}`
                                 : "Pago a convenir"}
-                            </p>
-                            {trabajoActual.negociable && (
-                              <p className="text-[11px] text-slate-500">
-                                Pago negociable
-                              </p>
+                              {trabajoActual.negociable && " · Negociable"}
+                            </span>
+
+                            {modalidadActual && (
+                              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-700 capitalize">
+                                {modalidadActual}
+                              </span>
                             )}
+
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-700">
+                              {trabajoActual.ciudad && trabajoActual.ciudad.trim()
+                                ? trabajoActual.ciudad
+                                : "Ubicación no especificada"}
+                            </span>
                           </div>
 
-                          <div className="text-right text-[11px] text-slate-500">
-                            <p>
-                              Publicado el{" "}
-                              {new Date(
-                                trabajoActual.fecha_creacion
-                              ).toLocaleDateString()}
-                            </p>
-                            <p className="capitalize">
-                              Estado: {trabajoActual.estado.toLowerCase()}
-                            </p>
+                          {/* Descripción */}
+                          {trabajoActual.descripcion && (
+                            <div className="mt-4">
+                              <h3 className="text-xs font-semibold text-slate-700 mb-1">
+                                Description
+                              </h3>
+                              <p className="text-xs text-slate-600 leading-relaxed line-clamp-4">
+                                {trabajoActual.descripcion}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Requirements SIEMPRE visibles */}
+                          <div className="mt-3">
+                            <h3 className="text-xs font-semibold text-slate-700 mb-1">
+                              Requirements
+                            </h3>
+                            {(() => {
+                              const list = parseToList(
+                                trabajoActual.habilidades ||
+                                  trabajoActual.requisitos
+                              );
+                              if (list.length === 0) {
+                                return (
+                                  <p className="text-[11px] text-slate-400">
+                                    Este empleador no indicó requisitos
+                                    específicos para este CameYo.
+                                  </p>
+                                );
+                              }
+                              return (
+                                <div className="flex flex-wrap gap-2">
+                                  {list.slice(0, 4).map((item, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="px-3 py-1 rounded-full bg-pink-50 text-pink-600 text-[11px] font-medium"
+                                    >
+                                      {item}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
 
-                        {trabajoActual.descripcion && (
-                          <p className="text-[11px] text-slate-600 line-clamp-3">
-                            {trabajoActual.descripcion}
-                          </p>
-                        )}
-
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {trabajoActual.categoria && (
-                            <span className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-[11px] font-medium">
-                              {trabajoActual.categoria}
-                            </span>
-                          )}
-                          {trabajoActual.modalidad && (
-                            <span className="px-3 py-1 rounded-full bg-slate-50 text-slate-700 text-[11px] font-medium">
-                              {trabajoActual.modalidad}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-2 flex">
+                        <div className="flex items-center justify-between gap-3 mt-4">
+                          <div className="text-[11px] text-slate-400">
+                            Publicado el{" "}
+                            {new Date(
+                              trabajoActual.fecha_creacion
+                            ).toLocaleDateString()}
+                          </div>
                           <button
                             type="button"
-                            className="flex-1 px-3 py-2 rounded-full border border-slate-200 text-[11px] text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all"
+                            className="px-4 py-2 rounded-full bg-slate-900 text-white text-[11px] font-medium shadow-sm hover:bg-slate-800 active:scale-[0.98] transition"
                             onClick={(e) => {
                               e.stopPropagation();
                               openJobModal(trabajoActual);
                             }}
                           >
-                            Ver detalles completos
+                            View details
                           </button>
                         </div>
                       </div>
@@ -429,48 +551,60 @@ const StudentDashboardHome: React.FC = () => {
                   type="button"
                   onClick={goNextJob}
                   disabled={currentIndex === trabajos.length - 1}
-                  className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
                 >
                   →
                 </button>
               </div>
 
-              <div className="mt-4 flex flex-col items-center gap-3">
-                <p className="text-[11px] text-slate-600">
-                  CameYo {currentIndex + 1} de {trabajos.length} · Página {page}
-                </p>
-
-                <div className="flex items-center gap-4">
-                  <button
+              {/* Botones swipe */}
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <div className="flex items-center gap-6">
+                  <motion.button
                     type="button"
                     onClick={() => handleSwipe("dislike")}
                     disabled={!trabajoActual}
-                    className="h-11 w-11 md:h-12 md:w-12 flex items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 text-lg font-bold shadow-sm hover:bg-red-100 active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    whileTap={{ scale: 0.9 }}
+                    whileHover={{
+                      scale: 1.07,
+                      boxShadow: "0 18px 45px rgba(239,68,68,0.25)",
+                    }}
+                    className="h-14 w-14 md:h-16 md:w-16 flex items-center justify-center rounded-full border-[3px] border-red-400 bg-white text-red-500 text-2xl font-bold shadow-md hover:bg-red-50 active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     ✕
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => handleSwipe("like")}
                     disabled={!trabajoActual}
-                    className="h-14 w-14 md:h-16 md:w-16 flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 text-2xl font-bold shadow-md hover:bg-emerald-100 active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    whileTap={{ scale: 0.9 }}
+                    whileHover={{
+                      scale: 1.07,
+                      boxShadow: "0 20px 50px rgba(236,72,153,0.35)",
+                    }}
+                    className="h-16 w-16 md:h-20 md:w-20 flex items-center justify-center rounded-full bg-gradient-to-tr from-pink-500 via-fuchsia-500 to-purple-500 text-white text-3xl font-bold shadow-xl hover:opacity-95 active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     ♥
-                  </button>
+                  </motion.button>
                 </div>
 
                 <p className="text-[10px] text-slate-500">
-                  “✕ No me interesa” · “♥ Me interesa” — el swipe arrastrando la
-                  card hace lo mismo, con animación.
+                  “✕ No me interesa” · “♥ Me interesa” — también puedes arrastrar
+                  la tarjeta para hacer swipe.
+                </p>
+
+                <p className="text-[11px] text-slate-500 mt-1">
+                  CameYo {currentIndex + 1} de {trabajos.length} · Página {page}
                 </p>
               </div>
 
-              <div className="mt-6 flex justify-between items-center w-full max-w-3xl text-xs text-slate-600">
+              {/* Paginación */}
+              <div className="mt-6 flex justify-between items-center w-full max-w-5xl text-xs text-slate-600">
                 <button
                   onClick={prevPage}
                   disabled={page === 1}
-                  className="px-3 py-1.5 rounded-full border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                  className="px-3 py-1.5 rounded-full bg-white/80 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white"
                 >
                   ← Página anterior
                 </button>
@@ -480,7 +614,7 @@ const StudentDashboardHome: React.FC = () => {
                 <button
                   onClick={nextPage}
                   disabled={page >= totalPages}
-                  className="px-3 py-1.5 rounded-full border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                  className="px-3 py-1.5 rounded-full bg-white/80 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white"
                 >
                   Siguiente página →
                 </button>
@@ -489,13 +623,14 @@ const StudentDashboardHome: React.FC = () => {
           </>
         )}
 
+        {/* Modal detalles */}
         {selectedJob && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
             onClick={closeJobModal}
           >
             <div
-              className="bg-white rounded-3xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col md:flex-row"
+              className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col md:flex-row"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex-1 px-6 md:px-8 py-5 overflow-y-auto">
@@ -519,7 +654,8 @@ const StudentDashboardHome: React.FC = () => {
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">
                       {selectedJob.ciudad || "Ciudad no especificada"} ·{" "}
-                      {selectedJob.modalidad || "Modalidad no especificada"}
+                      {getModalidadLabel(selectedJob) ||
+                        "Modalidad no especificada"}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       Publicado el{" "}
@@ -545,16 +681,28 @@ const StudentDashboardHome: React.FC = () => {
                   </p>
                 </section>
 
-                {selectedJob.requisitos && (
-                  <section className="mb-5">
-                    <h3 className="text-sm font-semibold mb-1">Requisitos</h3>
-                    <ul className="list-disc list-inside space-y-1 text-xs text-slate-700">
-                      {parseToList(selectedJob.requisitos).map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
+                {/* Requisitos SIEMPRE visibles en modal */}
+                <section className="mb-5">
+                  <h3 className="text-sm font-semibold mb-1">Requisitos</h3>
+                  {(() => {
+                    const list = parseToList(selectedJob.requisitos);
+                    if (list.length === 0) {
+                      return (
+                        <p className="text-xs text-slate-500">
+                          Este empleador no ha indicado requisitos específicos
+                          para este CameYo.
+                        </p>
+                      );
+                    }
+                    return (
+                      <ul className="list-disc list-inside space-y-1 text-xs text-slate-700">
+                        {list.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
+                </section>
 
                 {selectedJob.habilidades && (
                   <section className="mb-5">
@@ -584,19 +732,33 @@ const StudentDashboardHome: React.FC = () => {
                       {selectedJob.foto_empleador_url ? (
                         <img
                           src={selectedJob.foto_empleador_url}
-                          alt={`Empleador ${selectedJob.empleador_id}`}
+                          alt={getEmployerName(selectedJob)}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span>E#{selectedJob.empleador_id}</span>
+                        <span>
+                          {getEmployerName(selectedJob)
+                            .split(" ")
+                            .map((p) => p[0])
+                            .join("")
+                            .toUpperCase()}
+                        </span>
                       )}
                     </div>
                     <p className="text-xs font-semibold text-slate-800">
-                      Empleador #{selectedJob.empleador_id}
+                      {getEmployerName(selectedJob)}
                     </p>
                     <p className="text-[11px] text-slate-500">
                       Creador de este CameYo
                     </p>
+                    <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] text-slate-700 border border-slate-200">
+                      <span>⭐</span>
+                      <span>
+                        {typeof selectedJob.rating_empleador === "number"
+                          ? selectedJob.rating_empleador.toFixed(1)
+                          : "0.0"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="text-[11px] text-slate-600 space-y-1">
@@ -611,6 +773,11 @@ const StudentDashboardHome: React.FC = () => {
                     <p>
                       <span className="font-semibold">Categoría:</span>{" "}
                       {selectedJob.categoria || "No especificada"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Modalidad:</span>{" "}
+                      {getModalidadLabel(selectedJob) ||
+                        "No especificada por el empleador"}
                     </p>
                     <p>
                       <span className="font-semibold">Estado:</span>{" "}
@@ -628,6 +795,37 @@ const StudentDashboardHome: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Toast flotante de feedback */}
+        <AnimatePresence>
+          {feedback && (
+            <motion.div
+              key={feedback}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="pointer-events-none fixed bottom-6 left-1/2 -translate-x-1/2 z-40"
+            >
+              <div className="inline-flex items-center gap-2 rounded-full bg-white shadow-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700">
+                <span
+                  className={
+                    feedback === "like"
+                      ? "inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-tr from-pink-500 via-fuchsia-500 to-purple-500 text-white text-sm"
+                      : "inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-red-500 text-sm"
+                  }
+                >
+                  {feedback === "like" ? "♥" : "✕"}
+                </span>
+                <span>
+                  {feedback === "like"
+                    ? "Añadido a tus CameYos con interés."
+                    : "Descartaste este CameYo."}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
