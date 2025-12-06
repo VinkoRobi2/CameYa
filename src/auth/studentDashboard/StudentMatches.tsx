@@ -5,8 +5,6 @@ import { useAuth } from "../../global/AuthContext";
 import API_BASE_URL from "../../global/ApiBase";
 import StudentSidebar from "./StudentSidebar";
 
-// ⚠️ Ajusta esta ruta si tu backend expone otra para este handler
-// GetMatchesEstudianteHandler
 const MATCHES_ENDPOINT = `${API_BASE_URL}/protected/matches/aceptados/estudiantes`;
 
 interface MatchBackend {
@@ -28,7 +26,6 @@ interface Match extends MatchBackend {
   empleador_foto_perfil_url?: string;
 }
 
-// Normaliza URLs raras tipo "http://.../uploads/http://.../uploads/img.png"
 const normalizeFotoUrl = (raw?: string): string | undefined => {
   if (!raw) return undefined;
   const trimmed = raw.trim();
@@ -56,7 +53,6 @@ const StudentMatches: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const handleLogout = () => {
@@ -123,12 +119,27 @@ const StudentMatches: React.FC = () => {
   const openDetails = (m: Match) => setSelectedMatch(m);
   const closeDetails = () => setSelectedMatch(null);
 
+  const goToChat = (m: Match) => {
+    const employerName = [m.empleador_nombre, m.empleador_apellido]
+      .filter(Boolean)
+      .join(" ");
+
+    navigate(`/dashboard/student/chat/${m.empleador_id}`, {
+      state: {
+        empleadorId: m.empleador_id,
+        jobId: m.job_id,
+        jobTitle: m.job_titulo,
+        employerName,
+        avatar: m.empleador_foto_perfil_url,
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 text-slate-900 flex">
       <StudentSidebar onLogout={handleLogout} />
 
       <main className="flex-1 px-4 md:px-8 pt-24 pb-24 overflow-y-auto">
-        {/* Header */}
         <header className="mb-8 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-semibold text-slate-900">
@@ -140,7 +151,6 @@ const StudentMatches: React.FC = () => {
           </div>
         </header>
 
-        {/* Estado de carga / error */}
         {error && (
           <div className="mb-4 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
             {error}
@@ -180,7 +190,6 @@ const StudentMatches: React.FC = () => {
                   key={`${m.empleador_id}-${m.job_id}`}
                   className="bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col overflow-hidden"
                 >
-                  {/* Header del card */}
                   <div className="flex items-center gap-3 px-4 pt-4 pb-3">
                     {m.empleador_foto_perfil_url ? (
                       <img
@@ -205,7 +214,6 @@ const StudentMatches: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Info del trabajo */}
                   <div className="px-4 pb-4 flex-1 flex flex-col gap-3">
                     <div>
                       <h2 className="text-sm font-semibold text-slate-900">
@@ -267,9 +275,10 @@ const StudentMatches: React.FC = () => {
                         Ver detalles del CameYo
                       </button>
 
-                      {/* Botón placeholder para futuro chat */}
+                      {/* AHORA sí navega al chat */}
                       <button
                         type="button"
+                        onClick={() => goToChat(m)}
                         className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:brightness-105"
                       >
                         Ir al chat
@@ -385,10 +394,8 @@ const StudentMatches: React.FC = () => {
                 )}
 
                 <p className="text-[11px] text-slate-500 mt-2">
-                  En futuras versiones podrás iniciar el chat directamente
-                  desde aquí, coordinar horarios y dejar registro de la
-                  conversación. Por ahora, usa el canal que CameYa habilite
-                  para comunicarte con el empleador.
+                  Desde aquí también puedes ir directo al chat con este
+                  empleador para coordinar el CameYo.
                 </p>
               </div>
 
@@ -400,27 +407,13 @@ const StudentMatches: React.FC = () => {
                 >
                   Cerrar
                 </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:brightness-105"
-                    onClick={() => {
-                      if (!selectedMatch) return;
-                      const employerName = [selectedMatch.empleador_nombre, selectedMatch.empleador_apellido]
-                        .filter(Boolean)
-                        .join(" ");
-                      navigate(`/dashboard/student/chat/${selectedMatch.empleador_id}`, {
-                        state: {
-                          empleadorId: selectedMatch.empleador_id,
-                          jobId: selectedMatch.job_id,
-                          jobTitle: selectedMatch.job_titulo,
-                          employerName,
-                          avatar: selectedMatch.empleador_foto_perfil_url,
-                        },
-                      });
-                    }}
-                  >
-                    Ir al chat
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => goToChat(selectedMatch)}
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:brightness-105"
+                >
+                  Ir al chat
+                </button>
               </div>
             </div>
           </div>
