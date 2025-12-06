@@ -159,7 +159,7 @@ const EmployerPosts: React.FC = () => {
     m.estudiante_foto_perfil ||
     "";
 
-  const getIdChip = (label: string, value?: number) =>
+  const getIdChip = (_label: string, value?: number) =>
     value != null ? `#${value}` : "N/D";
 
   return (

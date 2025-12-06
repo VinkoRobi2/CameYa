@@ -82,8 +82,8 @@ const StudentDashboardHome: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedJob, setSelectedJob] = useState<TrabajoPublico | null>(null);
 
-  const [likedJobIds, setLikedJobIds] = useState<number[]>([]);
-  const [discardedJobIds, setDiscardedJobIds] = useState<number[]>([]);
+  const [, setLikedJobIds] = useState<number[]>([]);
+  const [, setDiscardedJobIds] = useState<number[]>([]);
   const [lastDirection, setLastDirection] = useState<"left" | "right">("right");
 
   // 🔥 Estado solo visual para feedback de like/dislike
