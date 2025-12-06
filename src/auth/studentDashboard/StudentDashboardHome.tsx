@@ -194,7 +194,6 @@ const StudentDashboardHome: React.FC = () => {
   const nextPage = () => setPage((p) => (p < totalPages ? p + 1 : p));
   const prevPage = () => setPage((p) => (p > 1 ? p - 1 : 1));
 
-  const openJobModal = (job: TrabajoPublico) => setSelectedJob(job);
   const closeJobModal = () => setSelectedJob(null);
 
   const parseToList = (text: string | undefined) => {
@@ -205,13 +204,7 @@ const StudentDashboardHome: React.FC = () => {
       .filter(Boolean);
   };
 
-  const goPrevJob = () => {
-    setCurrentIndex((idx) => (idx > 0 ? idx - 1 : idx));
-  };
 
-  const goNextJob = () => {
-    setCurrentIndex((idx) => (idx < trabajos.length - 1 ? idx + 1 : idx));
-  };
 
   const handleSwipe = (action: "like" | "dislike") => {
     if (!trabajos.length) return;
