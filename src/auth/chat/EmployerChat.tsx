@@ -1,4 +1,4 @@
-// src/auth/employerDashboard/EmployerChat.tsx (o la ruta donde lo tengas)
+// src/auth/chat/EmployerChat.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import EmployerSidebar from "../employerDashboard/EmployerSidebar";
@@ -11,8 +11,7 @@ interface LocationState {
   jobTitle?: string;
   studentName?: string;
   avatar?: string;
-  // NUEVO: id de la postulación
-  postulacionId?: number;
+  postulacionId?: number; // NUEVO: id de la postulación
 }
 
 interface ChatMessage {
@@ -120,7 +119,7 @@ const EmployerChat: React.FC = () => {
         }
 
         if (!res.ok) {
-          console.error("Error cargando histórico de mensajes");
+          console.error("Error cargando histórico de mensajes (employer)");
           return;
         }
 
@@ -195,7 +194,7 @@ const EmployerChat: React.FC = () => {
       return;
     }
     if (!receiverId || !jobId) {
-      console.warn("Falta receiverId o jobId");
+      console.warn("Falta receiverId o jobId en EmployerChat");
       return;
     }
 
@@ -204,14 +203,11 @@ const EmployerChat: React.FC = () => {
       token
     )}`;
 
-    console.log("Employer WS URL:", url);
-
     const ws = new WebSocket(url);
     wsRef.current = ws;
     setWsStatus("connecting");
 
     ws.onopen = () => {
-      console.log("Employer WS abierto");
       setWsStatus("open");
 
       if (pendingMessageRef.current) {
@@ -258,7 +254,6 @@ const EmployerChat: React.FC = () => {
     };
 
     ws.onclose = (evt) => {
-      console.log("Employer WS cerrado, code:", evt.code, "reason:", evt.reason);
       setWsStatus("closed");
       wsRef.current = null;
     };
@@ -275,7 +270,7 @@ const EmployerChat: React.FC = () => {
     const ws = wsRef.current;
 
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.log("WS aún no OPEN, guardando mensaje pendiente (employer)");
+      // Si el WS aún no está listo, guardamos y se envía en onopen
       pendingMessageRef.current = trimmed;
       setInput("");
       return;
@@ -313,7 +308,10 @@ const EmployerChat: React.FC = () => {
   };
 
   const handleMarkCompleted = async () => {
-    if (!postulacionId || !jobId || isCompleting) return;
+    if (!jobId || !postulacionId) {
+      console.error("Falta jobId o postulacionId para completar el trabajo");
+      return;
+    }
 
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -467,9 +465,7 @@ const EmployerChat: React.FC = () => {
               <button
                 type="button"
                 onClick={handleMarkCompleted}
-                disabled={
-                  !postulacionId || isCompleting || completion.meCompleted
-                }
+                disabled={isCompleting || completion.meCompleted}
                 className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {completion.meCompleted
