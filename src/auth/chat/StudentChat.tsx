@@ -11,6 +11,8 @@ interface LocationState {
   jobTitle?: string;
   employerName?: string;
   avatar?: string;
+  // NUEVO: id de la postulación
+  postulacionId?: number;
 }
 
 interface ChatMessage {
@@ -29,6 +31,12 @@ interface MensajeApi {
   fecha: string;
 }
 
+interface CompletionState {
+  meCompleted: boolean;
+  otherCompleted: boolean;
+  estado: string;
+}
+
 const StudentChat: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +50,13 @@ const StudentChat: React.FC = () => {
     "connecting"
   );
 
+  const [completion, setCompletion] = useState<CompletionState>({
+    meCompleted: false,
+    otherCompleted: false,
+    estado: "en_progreso",
+  });
+  const [isCompleting, setIsCompleting] = useState(false);
+
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessageRef = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +65,7 @@ const StudentChat: React.FC = () => {
   const jobTitle = state.jobTitle || "CameYo sin título";
   const otherAvatar = state.avatar;
   const jobId = state.jobId; // se usa en el backend
+  const postulacionId = state.postulacionId;
 
   // Datos del usuario logueado (estudiante) desde localStorage
   const storedUserStr = localStorage.getItem("auth_user");
@@ -81,7 +97,7 @@ const StudentChat: React.FC = () => {
     }
   }, [messages]);
 
-  // 1) Cargar histórico desde backend (igual que EmployerChat)
+  // 1) Cargar histórico desde backend
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token || !receiverId || !jobId || !currentUserId) return;
@@ -128,6 +144,46 @@ const StudentChat: React.FC = () => {
     fetchHistory();
   }, [receiverId, jobId, currentUserId, logout, navigate]);
 
+  // 1.5) Cargar estado de la postulación
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token || !postulacionId || !jobId) return;
+
+    const fetchCompletion = async () => {
+      try {
+        const url = `${API_BASE_URL}/protected/completar/estado?postulacion_id=${postulacionId}&job_id=${jobId}`;
+        const res = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (!res.ok) {
+          console.error("Error obteniendo estado de postulación (student)");
+          return;
+        }
+
+        const data = await res.json();
+
+        setCompletion({
+          meCompleted: !!data.student_completed,
+          otherCompleted: !!data.employer_completed,
+          estado: data.estado || "en_progreso",
+        });
+      } catch (err) {
+        console.error("Error estado postulación student:", err);
+      }
+    };
+
+    fetchCompletion();
+  }, [postulacionId, jobId, logout, navigate]);
+
   // 2) Abrir WebSocket para mensajes en tiempo real
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -157,7 +213,6 @@ const StudentChat: React.FC = () => {
       console.log("Student WS abierto");
       setWsStatus("open");
 
-      // Si el usuario ya había intentado enviar algo antes de que abriera:
       if (pendingMessageRef.current) {
         const msg = pendingMessageRef.current;
         pendingMessageRef.current = null;
@@ -223,8 +278,6 @@ const StudentChat: React.FC = () => {
 
     const ws = wsRef.current;
 
-    // Si el WS aún no está OPEN,
-    // guardamos el mensaje y dejamos que onopen lo envíe.
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       console.log("WS aún no OPEN, guardando mensaje pendiente (student)");
       pendingMessageRef.current = trimmed;
@@ -263,6 +316,59 @@ const StudentChat: React.FC = () => {
     navigate("/", { replace: true });
   };
 
+  const handleMarkCompleted = async () => {
+    if (!postulacionId || !jobId || isCompleting) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      logout();
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    try {
+      setIsCompleting(true);
+
+      const res = await fetch(
+        `${API_BASE_URL}/protected/completar/estudiante`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            postulacion_id: postulacionId,
+            job_id: jobId,
+          }),
+        }
+      );
+
+      if (res.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("Error marcando completado (student)");
+        return;
+      }
+
+      const data = await res.json();
+
+      setCompletion({
+        meCompleted: !!data.student_completed,
+        otherCompleted: !!data.employer_completed,
+        estado: data.estado || "en_progreso",
+      });
+    } catch (err) {
+      console.error("Error completando (student):", err);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   const renderAvatar = (fromSelf: boolean) => {
     const url = fromSelf ? selfAvatar : otherAvatar;
     const name = fromSelf ? "Tú" : employerName;
@@ -291,6 +397,19 @@ const StudentChat: React.FC = () => {
       </div>
     );
   };
+
+  const statusLabel = (() => {
+    if (completion.estado === "completado") {
+      return "Ambos marcaron este CameYo como completado.";
+    }
+    if (completion.meCompleted && !completion.otherCompleted) {
+      return "Ya marcaste este CameYo como completado. Esperando al empleador.";
+    }
+    if (!completion.meCompleted && completion.otherCompleted) {
+      return "El empleador ya marcó como completado. Aún falta tu confirmación.";
+    }
+    return "CameYo en progreso.";
+  })();
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -336,22 +455,30 @@ const StudentChat: React.FC = () => {
                   <p className="text-[11px] text-slate-500">Posición:</p>
                   <p className="text-[11px] text-slate-700">{jobTitle}</p>
                   <p className="mt-1 text-[10px] text-slate-400">
-                    Estado:{" "}
+                    Estado chat:{" "}
                     {wsStatus === "open"
                       ? "Conectado"
                       : wsStatus === "connecting"
                       ? "Conectando..."
                       : "Desconectado"}
                   </p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {statusLabel}
+                  </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5"
-                onClick={() => console.log("Marcar como completado (student)")}
+                className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={handleMarkCompleted}
+                disabled={
+                  !postulacionId || isCompleting || completion.meCompleted
+                }
               >
-                Marcar como completado
+                {completion.meCompleted
+                  ? "Ya marcaste como completado"
+                  : "Marcar como completado"}
               </button>
             </div>
 

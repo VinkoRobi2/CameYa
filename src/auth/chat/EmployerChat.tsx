@@ -1,4 +1,4 @@
-// src/auth/employerDashboard/EmployerChat.tsx
+// src/auth/employerDashboard/EmployerChat.tsx (o la ruta donde lo tengas)
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import EmployerSidebar from "../employerDashboard/EmployerSidebar";
@@ -11,6 +11,8 @@ interface LocationState {
   jobTitle?: string;
   studentName?: string;
   avatar?: string;
+  // NUEVO: id de la postulación
+  postulacionId?: number;
 }
 
 interface ChatMessage {
@@ -29,6 +31,12 @@ interface MensajeApi {
   fecha: string;
 }
 
+interface CompletionState {
+  meCompleted: boolean;
+  otherCompleted: boolean;
+  estado: string;
+}
+
 const EmployerChat: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +50,13 @@ const EmployerChat: React.FC = () => {
     "connecting"
   );
 
+  const [completion, setCompletion] = useState<CompletionState>({
+    meCompleted: false,
+    otherCompleted: false,
+    estado: "en_progreso",
+  });
+  const [isCompleting, setIsCompleting] = useState(false);
+
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessageRef = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +65,7 @@ const EmployerChat: React.FC = () => {
   const jobTitle = state.jobTitle || "CameYo sin título";
   const otherAvatar = state.avatar;
   const jobId = state.jobId;
+  const postulacionId = state.postulacionId;
 
   // Datos del usuario logueado (empleador) desde localStorage
   const storedUserStr = localStorage.getItem("auth_user");
@@ -130,7 +146,47 @@ const EmployerChat: React.FC = () => {
     fetchHistory();
   }, [receiverId, jobId, currentUserId, logout, navigate]);
 
-  // 2) Abrir WebSocket (en dev con StrictMode verás dos conexiones, es normal)
+  // 1.5) Cargar estado de la postulación (para el botón de completado)
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token || !postulacionId || !jobId) return;
+
+    const fetchCompletion = async () => {
+      try {
+        const url = `${API_BASE_URL}/protected/completar/estado?postulacion_id=${postulacionId}&job_id=${jobId}`;
+        const res = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (!res.ok) {
+          console.error("Error obteniendo estado de postulación (employer)");
+          return;
+        }
+
+        const data = await res.json();
+
+        setCompletion({
+          meCompleted: !!data.employer_completed,
+          otherCompleted: !!data.student_completed,
+          estado: data.estado || "en_progreso",
+        });
+      } catch (err) {
+        console.error("Error estado postulación employer:", err);
+      }
+    };
+
+    fetchCompletion();
+  }, [postulacionId, jobId, logout, navigate]);
+
+  // 2) Abrir WebSocket
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -158,7 +214,6 @@ const EmployerChat: React.FC = () => {
       console.log("Employer WS abierto");
       setWsStatus("open");
 
-      // Si había un mensaje pendiente lo enviamos ahora
       if (pendingMessageRef.current) {
         const msg = pendingMessageRef.current;
         pendingMessageRef.current = null;
@@ -219,7 +274,6 @@ const EmployerChat: React.FC = () => {
 
     const ws = wsRef.current;
 
-    // Si todavía no está listo, lo guardamos en pending y dejamos que onopen lo envíe
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       console.log("WS aún no OPEN, guardando mensaje pendiente (employer)");
       pendingMessageRef.current = trimmed;
@@ -258,6 +312,59 @@ const EmployerChat: React.FC = () => {
     navigate("/", { replace: true });
   };
 
+  const handleMarkCompleted = async () => {
+    if (!postulacionId || !jobId || isCompleting) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      logout();
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    try {
+      setIsCompleting(true);
+
+      const res = await fetch(
+        `${API_BASE_URL}/protected/completar/empleador`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            postulacion_id: postulacionId,
+            job_id: jobId,
+          }),
+        }
+      );
+
+      if (res.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("Error marcando completado (empleador)");
+        return;
+      }
+
+      const data = await res.json();
+
+      setCompletion({
+        meCompleted: !!data.employer_completed,
+        otherCompleted: !!data.student_completed,
+        estado: data.estado || "en_progreso",
+      });
+    } catch (err) {
+      console.error("Error completando (empleador):", err);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   const renderAvatar = (fromSelf: boolean) => {
     const url = fromSelf ? selfAvatar : otherAvatar;
     const name = fromSelf ? "Tú" : studentName;
@@ -286,6 +393,19 @@ const EmployerChat: React.FC = () => {
       </div>
     );
   };
+
+  const statusLabel = (() => {
+    if (completion.estado === "completado") {
+      return "Ambos marcaron este CameYo como completado.";
+    }
+    if (completion.meCompleted && !completion.otherCompleted) {
+      return "Ya marcaste este CameYo como completado. Esperando al estudiante.";
+    }
+    if (!completion.meCompleted && completion.otherCompleted) {
+      return "El estudiante ya marcó como completado. Aún falta tu confirmación.";
+    }
+    return "CameYo en progreso.";
+  })();
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -331,21 +451,30 @@ const EmployerChat: React.FC = () => {
                   <p className="text-[11px] text-slate-500">Postulación a:</p>
                   <p className="text-[11px] text-slate-700">{jobTitle}</p>
                   <p className="mt-1 text-[10px] text-slate-400">
-                    Estado:{" "}
+                    Estado chat:{" "}
                     {wsStatus === "open"
                       ? "Conectado"
                       : wsStatus === "connecting"
                       ? "Conectando..."
                       : "Desconectado"}
                   </p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {statusLabel}
+                  </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5"
+                onClick={handleMarkCompleted}
+                disabled={
+                  !postulacionId || isCompleting || completion.meCompleted
+                }
+                className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Marcar como completado
+                {completion.meCompleted
+                  ? "Ya marcaste como completado"
+                  : "Marcar como completado"}
               </button>
             </div>
 
@@ -367,7 +496,6 @@ const EmployerChat: React.FC = () => {
                     m.fromSelf ? "justify-end" : "justify-start"
                   }`}
                 >
-                  {/* foto siempre a la izquierda de la burbuja */}
                   {renderAvatar(m.fromSelf)}
                   <div
                     className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${
