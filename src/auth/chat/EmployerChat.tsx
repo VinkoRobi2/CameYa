@@ -11,7 +11,8 @@ interface LocationState {
   jobTitle?: string;
   studentName?: string;
   avatar?: string;
-  matchId?: number; // <- AHORA usamos id del match
+  matchId?: number;   // camelCase
+  match_id?: number;  // por si llega directo del backend
 }
 
 interface ChatMessage {
@@ -64,7 +65,8 @@ const EmployerChat: React.FC = () => {
   const jobTitle = state.jobTitle || "CameYo sin título";
   const otherAvatar = state.avatar;
   const jobId = state.jobId;
-  const matchId = state.matchId;
+  const matchId = state.matchId ?? state.match_id ?? null;
+
 
   // Datos del usuario logueado (empleador)
   const storedUserStr = localStorage.getItem("auth_user");
@@ -302,11 +304,15 @@ const EmployerChat: React.FC = () => {
     navigate("/", { replace: true });
   };
 
-  const handleMarkCompleted = async () => {
-    if (!jobId || !matchId) {
-      console.error("Falta jobId o matchId para completar el trabajo");
-      return;
-    }
+    const handleMarkCompleted = async () => {
+      if (!jobId || !matchId) {
+        console.error("Falta jobId o matchId para completar el trabajo", {
+          jobId,
+          matchId,
+          state,
+        });
+        return;
+      }
 
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -460,7 +466,7 @@ const EmployerChat: React.FC = () => {
               <button
                 type="button"
                 onClick={handleMarkCompleted}
-                disabled={isCompleting || completion.meCompleted || !matchId}
+                disabled={isCompleting || completion.meCompleted} // ← quita el !matchId
                 className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {completion.meCompleted
