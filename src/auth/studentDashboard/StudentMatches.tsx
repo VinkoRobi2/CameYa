@@ -10,6 +10,9 @@ const MATCHES_ENDPOINT = `${API_BASE_URL}/protected/matches/aceptados/estudiante
 interface StudentMatch {
   id?: number;
 
+  // 👇 AÑADIMOS match_id
+  match_id?: number;
+
   // Trabajo
   job_id?: number;
   job_titulo?: string;
@@ -141,6 +144,9 @@ const StudentMatches: React.FC = () => {
     const employerName = getEmployerName(match);
     const avatar = getImage(match);
 
+    // 👇 Normalizamos el id de match
+    const matchId = match.match_id ?? match.id;
+
     navigate(`/dashboard/student/chat/${match.empleador_id}`, {
       state: {
         empleadorId: match.empleador_id,
@@ -148,6 +154,9 @@ const StudentMatches: React.FC = () => {
         jobTitle,
         employerName,
         avatar,
+        // pasamos el match también aquí
+        matchId,
+        match_id: matchId,
       },
     });
   };
@@ -159,7 +168,7 @@ const StudentMatches: React.FC = () => {
       <main className="flex-1 px-4 md:px-10 pt-24 pb-24 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           {/* Header tipo "Tus Matches" igual que en EmployerMatches */}
-          <header className="mb-8 flex items-center justify-between gap-4">
+          <header className="mb-8 flex items-center justify_between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-semibold text-slate-900">
                 Tus Matches
@@ -189,9 +198,9 @@ const StudentMatches: React.FC = () => {
                 Aún no tienes matches.
               </p>
               <p className="text-xs text-slate-500 mb-4">
-                Sigue swpeando CameYos en la pantalla principal. 
-                Cuando haya interés mutuo con un empleador, lo verás aquí
-                y podrás escribirle por chat.
+                Sigue swpeando CameYos en la pantalla principal. Cuando haya
+                interés mutuo con un empleador, lo verás aquí y podrás escribirle
+                por chat.
               </p>
             </div>
           ) : (

@@ -11,6 +11,9 @@ interface EmployerMatch {
   // puede que el backend no envíe id explícito
   id?: number;
 
+  // 👇 AÑADIMOS EL match_id QUE VIENE DEL BACK
+  match_id?: number;
+
   job_id?: number;
   job_titulo?: string;
   job_descripcion?: string;
@@ -159,7 +162,6 @@ const EmployerMatches: React.FC = () => {
     m.estudiante_foto_perfil ||
     "";
 
-
   return (
     <div className="min-h-screen flex bg-slate-50">
       <EmployerSidebar mode={mode} onLogout={handleLogout} />
@@ -218,6 +220,9 @@ const EmployerMatches: React.FC = () => {
                 const description = getDescription(match);
                 const imgSrc = getImage(match);
 
+                // 👇 Normalizamos el ID del match
+                const matchId = match.match_id ?? match.id;
+
                 return (
                   <article
                     key={match.id ?? `${match.job_id}-${match.estudiante_id}-${idx}`}
@@ -269,32 +274,33 @@ const EmployerMatches: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Derecha: IDs + botón Enviar mensaje */}
+                    {/* Derecha: botón Enviar mensaje */}
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <div className="text-[11px] text-slate-400 text-right leading-tight">
-                      </div>
-
-
                       <button
                         type="button"
                         className="inline-flex items-center justify-center gap-1 rounded-full border border-primary/80 px-3.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/5 active:scale-[0.98] transition"
                         onClick={() => {
                           if (!match.estudiante_id) return;
-                          navigate(`/dashboard/employer/chat/${match.estudiante_id}`, {
-                            state: {
-                              estudianteId: match.estudiante_id,
-                              jobId: match.job_id,
-                              jobTitle,
-                              studentName,
-                              avatar: imgSrc,
-                            },
-                          });
+                          navigate(
+                            `/dashboard/employer/chat/${match.estudiante_id}`,
+                            {
+                              state: {
+                                estudianteId: match.estudiante_id,
+                                jobId: match.job_id,
+                                jobTitle,
+                                studentName,
+                                avatar: imgSrc,
+                                // 👇 Pasamos el ID de match en ambos formatos
+                                matchId,
+                                match_id: matchId,
+                              },
+                            }
+                          );
                         }}
                       >
                         <span className="text-xs">💬</span>
                         <span>Enviar mensaje</span>
                       </button>
-
                     </div>
                   </article>
                 );
