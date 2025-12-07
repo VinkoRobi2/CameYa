@@ -4,6 +4,7 @@ import React, {
   useContext,
   useState,
   type ReactNode,
+  useEffect,
 } from "react";
 
 type Role = "student" | "employer" | null;
@@ -25,14 +26,37 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// ⏱️ Duración máxima de la sesión en ms (24 horas)
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+
 // 🔐 Helper para reconstruir el usuario desde localStorage
 const getInitialUserFromStorage = (): User | null => {
   if (typeof window === "undefined") return null;
 
   const token = localStorage.getItem("auth_token");
   const storedUserStr = localStorage.getItem("auth_user");
+  const timestampStr = localStorage.getItem("auth_timestamp");
 
-  if (!token || !storedUserStr) return null;
+  // Si falta algo, no restauramos sesión
+  if (!token || !storedUserStr || !timestampStr) return null;
+
+  const timestamp = Number(timestampStr);
+  if (!Number.isFinite(timestamp)) {
+    // Datos corruptos -> limpiar
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
+    localStorage.removeItem("auth_timestamp");
+    return null;
+  }
+
+  const now = Date.now();
+  // Si pasaron más de 24h, expirar sesión
+  if (now - timestamp > SESSION_DURATION_MS) {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
+    localStorage.removeItem("auth_timestamp");
+    return null;
+  }
 
   try {
     const raw = JSON.parse(storedUserStr);
@@ -81,12 +105,65 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = () => {
     setUser(null);
     setRole(null);
-    // 👇 importante: limpiar sesión persistida
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
       localStorage.removeItem("auth_user");
+      localStorage.removeItem("auth_timestamp");
     }
   };
+
+  // ⏱️ Efecto para auto-logout cuando pasan las 24h
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!user) return;
+
+    const timestampStr = localStorage.getItem("auth_timestamp");
+    if (!timestampStr) {
+      // No hay timestamp pero hay user -> forzamos logout
+      setUser(null);
+      setRole(null);
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("auth_timestamp");
+      return;
+    }
+
+    const timestamp = Number(timestampStr);
+    if (!Number.isFinite(timestamp)) {
+      setUser(null);
+      setRole(null);
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("auth_timestamp");
+      return;
+    }
+
+    const now = Date.now();
+    const elapsed = now - timestamp;
+    const remaining = SESSION_DURATION_MS - elapsed;
+
+    if (remaining <= 0) {
+      // Ya expiró
+      setUser(null);
+      setRole(null);
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("auth_timestamp");
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setUser(null);
+      setRole(null);
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("auth_timestamp");
+    }, remaining);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [user]);
 
   const value: AuthContextValue = { user, role, setRole, login, logout };
 

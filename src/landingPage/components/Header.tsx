@@ -9,7 +9,7 @@ import { useAuth } from "../../global/AuthContext";
 
 export default function Header() {
   const location = useLocation();
-  const { user, role } = useAuth();
+  const { user, role, logout } = useAuth();
 
   const handleLogoClick: MouseEventHandler<HTMLAnchorElement> = (e) => {
     if (location.pathname === "/") {
@@ -78,6 +78,7 @@ export default function Header() {
   }
 
   const isLoggedIn = !!appHomePath;
+  const isLanding = location.pathname === "/";
 
   return (
     <header className="sticky top-0 z-50 bg-background-light/80 backdrop-blur-sm dark:bg-background-dark/80">
@@ -128,12 +129,24 @@ export default function Header() {
         {/* Acciones Auth */}
         <div className="flex items-center gap-2">
           {isLoggedIn ? (
-            <Link
-              to={appHomePath!}
-              className="h-10 min-w-[120px] rounded-full px-4 text-sm font-semibold bg-primary text-white hover:opacity-90 flex items-center justify-center transition-opacity"
-            >
-              Ir a mi app
-            </Link>
+            <>
+              <Link
+                to={appHomePath!}
+                className="h-10 min-w-[120px] rounded-full px-4 text-sm font-semibold bg-primary text-white hover:opacity-90 flex items-center justify-center transition-opacity"
+              >
+                Ir a mi app
+              </Link>
+
+              {isLanding && (
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="h-10 min-w-[120px] rounded-full px-4 text-sm font-semibold border border-primary text-primary bg-transparent hover:bg-primary/10 flex items-center justify-center transition-colors"
+                >
+                  Cerrar sesión
+                </button>
+              )}
+            </>
           ) : (
             <>
               <Link

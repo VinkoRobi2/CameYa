@@ -1,3 +1,4 @@
+// src/auth/Login.tsx (o donde lo tengas)
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Reveal from "../ui/Reveal";
@@ -64,6 +65,11 @@ const Login: React.FC = () => {
         localStorage.setItem("auth_user", JSON.stringify(userFromResponse));
       }
 
+      // ⏱️ Guardar momento del login para controlar las 24h
+      if (tokenFromResponse || userFromResponse) {
+        localStorage.setItem("auth_timestamp", Date.now().toString());
+      }
+
       const storedToken = localStorage.getItem("auth_token");
       if (!storedToken) {
         setError("No se encontró el token de autenticación.");
@@ -89,7 +95,9 @@ const Login: React.FC = () => {
           id: String(finalUser.user_id ?? finalUser.id ?? ""),
           name:
             finalUser.nombre || finalUser.apellido
-              ? `${finalUser.nombre ?? ""} ${finalUser.apellido ?? ""}`.trim()
+              ? `${finalUser.nombre ?? ""} ${
+                  finalUser.apellido ?? ""
+                }`.trim()
               : finalUser.name ?? "",
           email: finalUser.email,
           role:
@@ -124,13 +132,14 @@ const Login: React.FC = () => {
           tipoCuenta === "empleador" || tipoCuenta === "employer";
 
         if (esEstudiante) {
+          // estudiantes: si perfil_incompleto -> completar, si no -> dashboard
           if (!perfilCompleto) {
-            // ✅ Ruta correcta al flujo de completar perfil de estudiante
             redirectTo = "/register/student/complete";
           } else {
             redirectTo = "/dashboard/student";
           }
         } else if (esEmpleador) {
+          // empleadores: usar tipo_identidad ("empresa"/"persona") + perfil_completo
           if (!perfilCompleto) {
             redirectTo = "/register/employer/complete";
           } else {
