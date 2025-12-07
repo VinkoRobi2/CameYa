@@ -426,7 +426,7 @@ const StudentChat: React.FC = () => {
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/protected/valoracion/empleador`,
+        `${API_BASE_URL}/protected/valorar-empleador`,
         {
           method: "POST",
           headers: {
