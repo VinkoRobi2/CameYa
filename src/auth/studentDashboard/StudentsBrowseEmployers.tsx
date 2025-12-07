@@ -137,9 +137,9 @@ const StudentsBrowseEmployers: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 text-slate-900 flex">
       <StudentSidebar onLogout={handleLogout} />
 
-      <main className="flex-1 px-4 md:px-10 pt-24 pb-24 overflow-y-auto">
+      <main className="flex-1 px-4 md:px-10 pt-24 pb-24 overflow-y-auto flex flex-col items-center">
         {/* Header */}
-        <header className="mb-8 flex items-center justify-between gap-4">
+        <header className="mb-8 flex items-center justify-between gap-4 w-full max-w-5xl">
           <div>
             <h1 className="text-2xl md:text-3xl font-semibold text-slate-900">
               Browse Employers
@@ -171,7 +171,7 @@ const StudentsBrowseEmployers: React.FC = () => {
             </p>
           </div>
         ) : (
-          <section className="grid gap-4 md:gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <section className="grid gap-4 md:gap-5 md:grid-cols-2 xl:grid-cols-3 w-full max-w-5xl">
             {empleadores.map((emp) => {
               const nombreCompleto = [emp.nombre, emp.apellido]
                 .filter(Boolean)
