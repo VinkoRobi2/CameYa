@@ -11,7 +11,7 @@ interface LocationState {
   jobTitle?: string;
   employerName?: string;
   avatar?: string;
-  postulacionId?: number; // NUEVO
+  matchId?: number; // AHORA matchId
 }
 
 interface ChatMessage {
@@ -64,9 +64,9 @@ const StudentChat: React.FC = () => {
   const jobTitle = state.jobTitle || "CameYo sin título";
   const otherAvatar = state.avatar;
   const jobId = state.jobId;
-  const postulacionId = state.postulacionId;
+  const matchId = state.matchId;
 
-  // Datos del usuario logueado (estudiante) desde localStorage
+  // Datos del usuario logueado (estudiante)
   const storedUserStr = localStorage.getItem("auth_user");
   let selfAvatar: string | undefined;
   let currentUserId: number | null = null;
@@ -89,14 +89,14 @@ const StudentChat: React.FC = () => {
     }
   }
 
-  // Scroll al final cuando cambian los mensajes
+  // Scroll al final
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // 1) Cargar histórico desde backend
+  // 1) Histórico de mensajes
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token || !receiverId || !jobId || !currentUserId) return;
@@ -105,9 +105,7 @@ const StudentChat: React.FC = () => {
       try {
         const url = `${API_BASE_URL}/protected/mensajes/${receiverId}?job_id=${jobId}`;
         const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.status === 401) {
@@ -143,18 +141,16 @@ const StudentChat: React.FC = () => {
     fetchHistory();
   }, [receiverId, jobId, currentUserId, logout, navigate]);
 
-  // 1.5) Cargar estado de la postulación
+  // 1.5) Estado de completado vía match_id
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
-    if (!token || !postulacionId || !jobId) return;
+    if (!token || !matchId || !jobId) return;
 
     const fetchCompletion = async () => {
       try {
-        const url = `${API_BASE_URL}/protected/completar/estado?postulacion_id=${postulacionId}&job_id=${jobId}`;
+        const url = `${API_BASE_URL}/protected/completar/estado?match_id=${matchId}&job_id=${jobId}`;
         const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.status === 401) {
@@ -164,7 +160,7 @@ const StudentChat: React.FC = () => {
         }
 
         if (!res.ok) {
-          console.error("Error obteniendo estado de postulación (student)");
+          console.error("Error obteniendo estado de match (student)");
           return;
         }
 
@@ -176,14 +172,14 @@ const StudentChat: React.FC = () => {
           estado: data.estado || "en_progreso",
         });
       } catch (err) {
-        console.error("Error estado postulación student:", err);
+        console.error("Error estado match student:", err);
       }
     };
 
     fetchCompletion();
-  }, [postulacionId, jobId, logout, navigate]);
+  }, [matchId, jobId, logout, navigate]);
 
-  // 2) Abrir WebSocket para mensajes en tiempo real
+  // 2) WebSocket
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -239,7 +235,7 @@ const StudentChat: React.FC = () => {
         {
           id: now.getTime() + Math.random(),
           text,
-          fromSelf: false, // viene del empleador
+          fromSelf: false,
           createdAt: now.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -252,7 +248,7 @@ const StudentChat: React.FC = () => {
       console.error("Student WS error", err);
     };
 
-    ws.onclose = (evt) => {
+    ws.onclose = () => {
       setWsStatus("closed");
       wsRef.current = null;
     };
@@ -306,8 +302,8 @@ const StudentChat: React.FC = () => {
   };
 
   const handleMarkCompleted = async () => {
-    if (!jobId || !postulacionId) {
-      console.error("Falta jobId o postulacionId para completar el trabajo");
+    if (!jobId || !matchId) {
+      console.error("Falta jobId o matchId para completar el trabajo");
       return;
     }
 
@@ -330,7 +326,7 @@ const StudentChat: React.FC = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            postulacion_id: postulacionId,
+            match_id: matchId,
             job_id: jobId,
           }),
         }
@@ -418,7 +414,7 @@ const StudentChat: React.FC = () => {
           </button>
 
           <div className="rounded-3xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)] border border-slate-100 overflow-hidden flex flex-col min-h-[480px]">
-            {/* Header del chat */}
+            {/* Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-pink-50 via-white to-purple-50 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full overflow-hidden bg-slate-200 flex-shrink-0">
@@ -464,7 +460,7 @@ const StudentChat: React.FC = () => {
                 type="button"
                 className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={handleMarkCompleted}
-                disabled={isCompleting || completion.meCompleted}
+                disabled={isCompleting || completion.meCompleted || !matchId}
               >
                 {completion.meCompleted
                   ? "Ya marcaste como completado"
@@ -490,7 +486,6 @@ const StudentChat: React.FC = () => {
                     m.fromSelf ? "justify-end" : "justify-start"
                   }`}
                 >
-                  {/* Foto de quien envía */}
                   {renderAvatar(m.fromSelf)}
                   <div
                     className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${

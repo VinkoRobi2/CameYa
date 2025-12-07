@@ -11,7 +11,7 @@ interface LocationState {
   jobTitle?: string;
   studentName?: string;
   avatar?: string;
-  postulacionId?: number; // NUEVO: id de la postulación
+  matchId?: number; // <- AHORA usamos id del match
 }
 
 interface ChatMessage {
@@ -64,9 +64,9 @@ const EmployerChat: React.FC = () => {
   const jobTitle = state.jobTitle || "CameYo sin título";
   const otherAvatar = state.avatar;
   const jobId = state.jobId;
-  const postulacionId = state.postulacionId;
+  const matchId = state.matchId;
 
-  // Datos del usuario logueado (empleador) desde localStorage
+  // Datos del usuario logueado (empleador)
   const storedUserStr = localStorage.getItem("auth_user");
   let mode: "person" | "company" = "person";
   let selfAvatar: string | undefined;
@@ -91,14 +91,14 @@ const EmployerChat: React.FC = () => {
     }
   }
 
-  // Scroll al final cuando llegan mensajes
+  // Scroll al final en cada cambio de mensajes
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // 1) Cargar histórico desde backend
+  // 1) Histórico de mensajes
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token || !receiverId || !jobId || !currentUserId) return;
@@ -107,9 +107,7 @@ const EmployerChat: React.FC = () => {
       try {
         const url = `${API_BASE_URL}/protected/mensajes/${receiverId}?job_id=${jobId}`;
         const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.status === 401) {
@@ -145,18 +143,16 @@ const EmployerChat: React.FC = () => {
     fetchHistory();
   }, [receiverId, jobId, currentUserId, logout, navigate]);
 
-  // 1.5) Cargar estado de la postulación (para el botón de completado)
+  // 1.5) Estado de completado vía match_id
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
-    if (!token || !postulacionId || !jobId) return;
+    if (!token || !matchId || !jobId) return;
 
     const fetchCompletion = async () => {
       try {
-        const url = `${API_BASE_URL}/protected/completar/estado?postulacion_id=${postulacionId}&job_id=${jobId}`;
+        const url = `${API_BASE_URL}/protected/completar/estado?match_id=${matchId}&job_id=${jobId}`;
         const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.status === 401) {
@@ -166,7 +162,7 @@ const EmployerChat: React.FC = () => {
         }
 
         if (!res.ok) {
-          console.error("Error obteniendo estado de postulación (employer)");
+          console.error("Error obteniendo estado de match (employer)");
           return;
         }
 
@@ -178,14 +174,14 @@ const EmployerChat: React.FC = () => {
           estado: data.estado || "en_progreso",
         });
       } catch (err) {
-        console.error("Error estado postulación employer:", err);
+        console.error("Error estado match employer:", err);
       }
     };
 
     fetchCompletion();
-  }, [postulacionId, jobId, logout, navigate]);
+  }, [matchId, jobId, logout, navigate]);
 
-  // 2) Abrir WebSocket
+  // 2) WebSocket
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -240,7 +236,7 @@ const EmployerChat: React.FC = () => {
         {
           id: now.getTime() + Math.random(),
           text,
-          fromSelf: false, // viene del estudiante
+          fromSelf: false,
           createdAt: now.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -253,7 +249,7 @@ const EmployerChat: React.FC = () => {
       console.error("Employer WS error", err);
     };
 
-    ws.onclose = (evt) => {
+    ws.onclose = () => {
       setWsStatus("closed");
       wsRef.current = null;
     };
@@ -270,7 +266,6 @@ const EmployerChat: React.FC = () => {
     const ws = wsRef.current;
 
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      // Si el WS aún no está listo, guardamos y se envía en onopen
       pendingMessageRef.current = trimmed;
       setInput("");
       return;
@@ -308,8 +303,8 @@ const EmployerChat: React.FC = () => {
   };
 
   const handleMarkCompleted = async () => {
-    if (!jobId || !postulacionId) {
-      console.error("Falta jobId o postulacionId para completar el trabajo");
+    if (!jobId || !matchId) {
+      console.error("Falta jobId o matchId para completar el trabajo");
       return;
     }
 
@@ -332,7 +327,7 @@ const EmployerChat: React.FC = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            postulacion_id: postulacionId,
+            match_id: matchId,
             job_id: jobId,
           }),
         }
@@ -465,7 +460,7 @@ const EmployerChat: React.FC = () => {
               <button
                 type="button"
                 onClick={handleMarkCompleted}
-                disabled={isCompleting || completion.meCompleted}
+                disabled={isCompleting || completion.meCompleted || !matchId}
                 className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {completion.meCompleted
