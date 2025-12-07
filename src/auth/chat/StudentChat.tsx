@@ -57,6 +57,18 @@ const StudentChat: React.FC = () => {
   });
   const [isCompleting, setIsCompleting] = useState(false);
 
+  // Estado para valoraciones (estudiante → empleador)
+  const [hasRatedEmployer, setHasRatedEmployer] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [ratingTags, setRatingTags] = useState({
+    claridad_trabajo: false,
+    respeto_trato: false,
+    pago_cumplimiento: false,
+    organizacion: false,
+    ambiente_seguridad: false,
+  });
+
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessageRef = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -66,7 +78,7 @@ const StudentChat: React.FC = () => {
   const otherAvatar = state.avatar;
   const jobId = state.jobId;
   const matchId = state.matchId ?? state.match_id ?? null;
-
+  const empleadorId = state.empleadorId;
 
   // Datos del usuario logueado (estudiante)
   const storedUserStr = localStorage.getItem("auth_user");
@@ -180,6 +192,41 @@ const StudentChat: React.FC = () => {
 
     fetchCompletion();
   }, [matchId, jobId, logout, navigate]);
+
+  // 1.6) Estado de valoración (si el estudiante ya valoró al empleador)
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token || !jobId || !empleadorId) return;
+
+    const fetchRating = async () => {
+      try {
+        const url = `${API_BASE_URL}/protected/valoracion/empleador/?job_id=${jobId}&empleador_id=${empleadorId}`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.exists) {
+          setHasRatedEmployer(true);
+          if (typeof data.rating === "number") {
+            setRating(data.rating);
+          }
+        }
+      } catch (err) {
+        console.error("Error obteniendo estado de valoración empleador:", err);
+      }
+    };
+
+    fetchRating();
+  }, [jobId, empleadorId, logout, navigate]);
 
   // 2) WebSocket
   useEffect(() => {
@@ -303,16 +350,15 @@ const StudentChat: React.FC = () => {
     navigate("/", { replace: true });
   };
 
-      const handleMarkCompleted = async () => {
-        if (!jobId || !matchId) {
-          console.error("Falta jobId o matchId para completar el trabajo", {
-            jobId,
-            matchId,
-            state,
-          });
-          return;
-        }
-
+  const handleMarkCompleted = async () => {
+    if (!jobId || !matchId) {
+      console.error("Falta jobId o matchId para completar el trabajo", {
+        jobId,
+        matchId,
+        state,
+      });
+      return;
+    }
 
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -361,6 +407,56 @@ const StudentChat: React.FC = () => {
       console.error("Error completando (student):", err);
     } finally {
       setIsCompleting(false);
+    }
+  };
+
+  const toggleEmployerTag = (key: keyof typeof ratingTags) => {
+    setRatingTags((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSubmitEmployerRating = async () => {
+    if (!jobId || !empleadorId || rating <= 0) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      logout();
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/protected/valoracion/empleador`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            empleador_valorado_id: empleadorId,
+            job_id: jobId,
+            rating,
+            ...ratingTags,
+          }),
+        }
+      );
+
+      if (res.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("Error creando valoración de empleador");
+        return;
+      }
+
+      setHasRatedEmployer(true);
+      setShowRatingModal(false);
+    } catch (err) {
+      console.error("Error enviando valoración empleador:", err);
     }
   };
 
@@ -460,6 +556,25 @@ const StudentChat: React.FC = () => {
                   <p className="mt-1 text-[10px] text-slate-500">
                     {statusLabel}
                   </p>
+
+                  {completion.estado === "completado" && (
+                    <div className="mt-2 flex flex-col items-start gap-1">
+                      {hasRatedEmployer ? (
+                        <p className="text-[10px] text-emerald-600 font-medium">
+                          Ya valoraste a este empleador{" "}
+                          {rating ? `(⭐ ${rating}/5)` : ""}.
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowRatingModal(true)}
+                          className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                        >
+                          Valorar empleador
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -467,13 +582,12 @@ const StudentChat: React.FC = () => {
                 type="button"
                 className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={handleMarkCompleted}
-                disabled={isCompleting || completion.meCompleted} // ← quita !matchId
+                disabled={isCompleting || completion.meCompleted}
               >
                 {completion.meCompleted
                   ? "Ya marcaste como completado"
                   : "Marcar como completado"}
               </button>
-
             </div>
 
             {/* Lista de mensajes */}
@@ -539,6 +653,87 @@ const StudentChat: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Modal de valoración al empleador */}
+      {showRatingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-4 w-full max-w-sm">
+            <h3 className="text-sm font-semibold text-slate-900 mb-2">
+              Valorar a {employerName}
+            </h3>
+
+            <p className="text-[11px] text-slate-500 mb-2">
+              ¿Cómo fue la experiencia con este empleador?
+            </p>
+
+            {/* Rating 1–5 */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[11px] text-slate-600">Rating:</span>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRating(n)}
+                  className={`h-7 w-7 flex items-center justify-center rounded-full text-xs border ${
+                    rating >= n
+                      ? "bg-amber-400 text-white border-amber-400"
+                      : "bg-white text-slate-600 border-slate-300"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            {/* Tags del empleador */}
+            <div className="mb-3 space-y-1">
+              <p className="text-[10px] text-slate-500">Aspectos a destacar:</p>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  ["claridad_trabajo", "Claridad en el trabajo"],
+                  ["respeto_trato", "Buen trato / respeto"],
+                  ["pago_cumplimiento", "Pago y cumplimiento"],
+                  ["organizacion", "Buena organización"],
+                  ["ambiente_seguridad", "Ambiente y seguridad"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() =>
+                      toggleEmployerTag(key as keyof typeof ratingTags)
+                    }
+                    className={`px-2 py-1 rounded-full text-[10px] border ${
+                      ratingTags[key as keyof typeof ratingTags]
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                        : "bg-slate-50 text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowRatingModal(false)}
+                className="px-3 py-1.5 rounded-full text-[11px] border border-slate-200 text-slate-600"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitEmployerRating}
+                disabled={rating <= 0}
+                className="px-3 py-1.5 rounded-full text-[11px] bg-emerald-500 text-white font-semibold disabled:opacity-60"
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

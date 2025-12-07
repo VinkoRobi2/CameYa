@@ -11,8 +11,8 @@ interface LocationState {
   jobTitle?: string;
   studentName?: string;
   avatar?: string;
-  matchId?: number;   // camelCase
-  match_id?: number;  // por si llega directo del backend
+  matchId?: number; // camelCase
+  match_id?: number; // por si llega directo del backend
 }
 
 interface ChatMessage {
@@ -57,6 +57,23 @@ const EmployerChat: React.FC = () => {
   });
   const [isCompleting, setIsCompleting] = useState(false);
 
+  // Estado para valoraciones (empleador → estudiante)
+  const [hasRatedStudent, setHasRatedStudent] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [comment, setComment] = useState<string>("");
+  const [ratingTags, setRatingTags] = useState({
+    responsable_puntual: false,
+    calidad_trabajo: false,
+    buena_comunicacion: false,
+    buena_actitud: false,
+    autonomo: false,
+    no_se_presento: false,
+    cancelo_ultima_hora: false,
+    falta_respeto: false,
+    no_termino_trabajo: false,
+  });
+
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessageRef = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -66,7 +83,7 @@ const EmployerChat: React.FC = () => {
   const otherAvatar = state.avatar;
   const jobId = state.jobId;
   const matchId = state.matchId ?? state.match_id ?? null;
-
+  const estudianteId = state.estudianteId;
 
   // Datos del usuario logueado (empleador)
   const storedUserStr = localStorage.getItem("auth_user");
@@ -182,6 +199,41 @@ const EmployerChat: React.FC = () => {
 
     fetchCompletion();
   }, [matchId, jobId, logout, navigate]);
+
+  // 1.6) Estado de valoración (si el empleador ya valoró al estudiante)
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token || !jobId || !estudianteId) return;
+
+    const fetchRating = async () => {
+      try {
+        const url = `${API_BASE_URL}/protected/valoracion/estudiante/?job_id=${jobId}&=${estudianteId}`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.exists) {
+          setHasRatedStudent(true);
+          if (typeof data.rating === "number") {
+            setRating(data.rating);
+          }
+        }
+      } catch (err) {
+        console.error("Error obteniendo estado de valoración estudiante:", err);
+      }
+    };
+
+    fetchRating();
+  }, [jobId, estudianteId, logout, navigate]);
 
   // 2) WebSocket
   useEffect(() => {
@@ -304,15 +356,15 @@ const EmployerChat: React.FC = () => {
     navigate("/", { replace: true });
   };
 
-    const handleMarkCompleted = async () => {
-      if (!jobId || !matchId) {
-        console.error("Falta jobId o matchId para completar el trabajo", {
-          jobId,
-          matchId,
-          state,
-        });
-        return;
-      }
+  const handleMarkCompleted = async () => {
+    if (!jobId || !matchId) {
+      console.error("Falta jobId o matchId para completar el trabajo", {
+        jobId,
+        matchId,
+        state,
+      });
+      return;
+    }
 
     const token = localStorage.getItem("auth_token");
     if (!token) {
@@ -324,20 +376,17 @@ const EmployerChat: React.FC = () => {
     try {
       setIsCompleting(true);
 
-      const res = await fetch(
-        `${API_BASE_URL}/protected/completar/empleador`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            match_id: matchId,
-            job_id: jobId,
-          }),
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/protected/completar/empleador`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          match_id: matchId,
+          job_id: jobId,
+        }),
+      });
 
       if (res.status === 401) {
         logout();
@@ -361,6 +410,57 @@ const EmployerChat: React.FC = () => {
       console.error("Error completando (empleador):", err);
     } finally {
       setIsCompleting(false);
+    }
+  };
+
+  const toggleTag = (key: keyof typeof ratingTags) => {
+    setRatingTags((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSubmitRating = async () => {
+    if (!jobId || !estudianteId || rating <= 0) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      logout();
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/protected/valorar-estudiante`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            estudiante_valorado_id: estudianteId,
+            job_id: jobId,
+            rating,
+            comentario: comment,
+            ...ratingTags,
+          }),
+        }
+      );
+
+      if (res.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("Error creando valoración de estudiante");
+        return;
+      }
+
+      setHasRatedStudent(true);
+      setShowRatingModal(false);
+    } catch (err) {
+      console.error("Error enviando valoración estudiante:", err);
     }
   };
 
@@ -447,7 +547,7 @@ const EmployerChat: React.FC = () => {
                   <p className="text-sm font-semibold text-slate-900">
                     {studentName}
                   </p>
-                  <p className="text-[11px] text-slate-500">Postulación a:</p>
+                  <p className="text-[11px] text-slate-500">Match en:</p>
                   <p className="text-[11px] text-slate-700">{jobTitle}</p>
                   <p className="mt-1 text-[10px] text-slate-400">
                     Estado chat:{" "}
@@ -460,13 +560,32 @@ const EmployerChat: React.FC = () => {
                   <p className="mt-1 text-[10px] text-slate-500">
                     {statusLabel}
                   </p>
+
+                  {completion.estado === "completado" && (
+                    <div className="mt-2 flex flex-col items-start gap-1">
+                      {hasRatedStudent ? (
+                        <p className="text-[10px] text-emerald-600 font-medium">
+                          Ya valoraste a este estudiante{" "}
+                          {rating ? `(⭐ ${rating}/5)` : ""}.
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowRatingModal(true)}
+                          className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                        >
+                          Valorar estudiante
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleMarkCompleted}
-                disabled={isCompleting || completion.meCompleted} // ← quita el !matchId
+                disabled={isCompleting || completion.meCompleted}
                 className="inline-flex items-center justify-center px-4 py-1.5 rounded-full border border-primary/70 bg-white text-[11px] font-semibold text-primary shadow-sm hover:bg-primary/5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {completion.meCompleted
@@ -538,6 +657,117 @@ const EmployerChat: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Modal de valoración al estudiante */}
+      {showRatingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-4 w-full max-w-sm">
+            <h3 className="text-sm font-semibold text-slate-900 mb-2">
+              Valorar a {studentName}
+            </h3>
+
+            <p className="text-[11px] text-slate-500 mb-2">
+              ¿Cómo fue la experiencia trabajando con este estudiante?
+            </p>
+
+            {/* Rating 1–5 */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[11px] text-slate-600">Rating:</span>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRating(n)}
+                  className={`h-7 w-7 flex items-center justify-center rounded-full text-xs border ${
+                    rating >= n
+                      ? "bg-amber-400 text-white border-amber-400"
+                      : "bg-white text-slate-600 border-slate-300"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            {/* Tags positivos */}
+            <div className="mb-3 space-y-1">
+              <p className="text-[10px] text-slate-500">Aspectos positivos:</p>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  ["responsable_puntual", "Responsable / puntual"],
+                  ["calidad_trabajo", "Buena calidad de trabajo"],
+                  ["buena_comunicacion", "Buena comunicación"],
+                  ["buena_actitud", "Buena actitud"],
+                  ["autonomo", "Autónomo"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleTag(key as keyof typeof ratingTags)}
+                    className={`px-2 py-1 rounded-full text-[10px] border ${
+                      ratingTags[key as keyof typeof ratingTags]
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                        : "bg-slate-50 text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-[10px] text-slate-500 mt-2">Alertas:</p>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  ["no_se_presento", "No se presentó"],
+                  ["cancelo_ultima_hora", "Canceló a última hora"],
+                  ["falta_respeto", "Falta de respeto"],
+                  ["no_termino_trabajo", "No terminó el trabajo"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleTag(key as keyof typeof ratingTags)}
+                    className={`px-2 py-1 rounded-full text-[10px] border ${
+                      ratingTags[key as keyof typeof ratingTags]
+                        ? "bg-red-50 text-red-700 border-red-300"
+                        : "bg-slate-50 text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Comentario */}
+            <textarea
+              className="w-full border border-slate-200 rounded-xl px-2 py-1 text-[11px] mb-3 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              rows={3}
+              placeholder="Comentario opcional..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowRatingModal(false)}
+                className="px-3 py-1.5 rounded-full text-[11px] border border-slate-200 text-slate-600"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitRating}
+                disabled={rating <= 0}
+                className="px-3 py-1.5 rounded-full text-[11px] bg-emerald-500 text-white font-semibold disabled:opacity-60"
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
