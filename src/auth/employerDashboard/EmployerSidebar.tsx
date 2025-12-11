@@ -63,7 +63,7 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
       {/* HEADER SUPERIOR EMPLOYER */}
       <header className="fixed top-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
-          {/* Solo logo + texto sin fondo */}
+          {/* Logo + texto */}
           <div className="flex items-center gap-3">
             <img
               src={svg_logo}
@@ -71,7 +71,7 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
               className="h-7 w-auto object-contain"
             />
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-[var(--brand-900)]">
                 CameYa
               </span>
               <span className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -92,7 +92,7 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
             <button
               type="button"
               onClick={handleLogoutClick}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[var(--brand-900)]"
             >
               <span className="text-base">↪</span>
               <span>Logout</span>
@@ -113,15 +113,17 @@ const EmployerSidebar: React.FC<Props> = ({ mode, onLogout }) => {
                 onClick={() => handleNavigate(item.path)}
                 className={[
                   "flex flex-col items-center justify-center flex-1 py-2 px-2 gap-1 text-[11px] transition-colors",
-                  active ? "text-fuchsia-600" : "text-slate-500",
+                  active
+                    ? "text-[var(--brand-900)]"
+                    : "text-slate-500 hover:text-slate-700",
                 ].join(" ")}
               >
                 <div
                   className={[
-                    "flex items-center justify-center h-7 w-7 text-base rounded-full",
+                    "flex items-center justify-center h-7 w-7 text-base rounded-full transition-all",
                     active
-                      ? "bg-gradient-to-tr from-fuchsia-500 to-purple-600 text-white shadow-sm"
-                      : "",
+                      ? "bg-gradient-to-tr from-[var(--brand-900)] via-[var(--brand-600)] to-emerald-500 text-white shadow-sm"
+                      : "bg-slate-50 text-slate-500 border border-slate-200",
                   ].join(" ")}
                 >
                   <span>{item.icon}</span>

@@ -280,17 +280,37 @@ const EmployerCreateJob: React.FC = () => {
                   <label className="block text-xs md:text-sm font-medium mb-1.5">
                     Categoría *
                   </label>
-                  <input
+                  {/* 🔹 CAMBIO: input → select con categorías fijas */}
+                  <select
                     name="categoria"
                     value={form.categoria}
                     onChange={handleChange}
                     className="w-full rounded-xl bg-slate-50/60 dark:bg-background-dark border border-slate-200/80 dark:border-slate-700 px-3.5 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                    placeholder={
-                      isCompanyView
-                        ? "Activaciones, eventos de marca, soporte en local..."
-                        : "Eventos, logística, apoyo en mudanzas..."
-                    }
-                  />
+                  >
+                    <option value="">Selecciona una categoría</option>
+                    <option value="Eventos y promociones">
+                      Eventos y promociones
+                    </option>
+                    <option value="Apoyo en locales / comercio">
+                      Apoyo en locales / comercio
+                    </option>
+                    <option value="Tareas administrativas / oficina">
+                      Tareas administrativas / oficina
+                    </option>
+                    <option value="Apoyo digital y redes sociales">
+                      Apoyo digital y redes sociales
+                    </option>
+                    <option value="Tutorías y apoyo académico">
+                      Tutorías y apoyo académico
+                    </option>
+                    <option value="Apoyo logístico ligero">
+                      Apoyo logístico ligero
+                    </option>
+                    <option value="Tareas remotas varias">
+                      Tareas remotas varias
+                    </option>
+                    <option value="Otros">Otros</option>
+                  </select>
                 </div>
 
                 <div>
@@ -352,7 +372,7 @@ const EmployerCreateJob: React.FC = () => {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="block text-xs md:text-sm font-medium">
+                    <label className="block text-xs md:text-sm font-medium mb-1.5">
                       Ubicación *
                     </label>
                     <label className="inline-flex items-center gap-2 text-[11px] md:text-xs text-foreground-light/70 dark:text-foreground-dark/80">

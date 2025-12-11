@@ -26,7 +26,11 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
   const navItems = [
     { path: "/dashboard/student", label: "CameYos", icon: "💼" },
     { path: "/dashboard/student/matches", label: "Matches", icon: "💬" },
-    { path: "/dashboard/student/browse-employers", label: "Empleadores", icon: "🏢" },
+    {
+      path: "/dashboard/student/browse-employers",
+      label: "Empleadores",
+      icon: "🏢",
+    },
     { path: "/dashboard/student/profile", label: "Perfil", icon: "👤" },
   ];
 
@@ -43,7 +47,7 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
               className="h-7 w-auto object-contain"
             />
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-sm font-semibold text-[var(--brand-900)]">
                 CameYa
               </span>
               <span className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -54,13 +58,13 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
 
           {/* Chip de rol + logout */}
           <div className="flex items-center gap-4">
-            <span className="hidden xs:inline-flex items-center rounded-full bg-fuchsia-50 text-fuchsia-600 px-3 py-1 text-xs font-semibold">
+            <span className="hidden xs:inline-flex items-center rounded-full bg-[var(--brand-900)]/5 text-[var(--brand-900)] px-3 py-1 text-xs font-semibold">
               Buscar CameYo
             </span>
             <button
               type="button"
               onClick={handleLogoutClick}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[var(--brand-900)]"
             >
               <span className="text-base">↪</span>
               <span>Logout</span>
@@ -81,15 +85,17 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ onLogout }) => {
                 onClick={() => handleNavigate(item.path)}
                 className={[
                   "flex flex-col items-center justify-center flex-1 py-2 px-2 gap-1 text-[11px] transition-colors",
-                  active ? "text-fuchsia-600" : "text-slate-500",
+                  active
+                    ? "text-[var(--brand-900)]"
+                    : "text-slate-500 hover:text-slate-700",
                 ].join(" ")}
               >
                 <div
                   className={[
-                    "flex items-center justify-center h-7 w-7 text-base rounded-full",
+                    "flex items-center justify-center h-7 w-7 text-base rounded-full transition-all",
                     active
-                      ? "bg-gradient-to-tr from-fuchsia-500 to-purple-600 text-white shadow-sm"
-                      : "",
+                      ? "bg-gradient-to-tr from-[var(--brand-900)] via-[var(--brand-600)] to-emerald-500 text-white shadow-sm"
+                      : "bg-slate-50 text-slate-500 border border-slate-200",
                   ].join(" ")}
                 >
                   <span>{item.icon}</span>

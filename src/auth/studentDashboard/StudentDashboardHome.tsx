@@ -204,8 +204,6 @@ const StudentDashboardHome: React.FC = () => {
       .filter(Boolean);
   };
 
-
-
   const handleSwipe = (action: "like" | "dislike") => {
     if (!trabajos.length) return;
 
@@ -324,17 +322,17 @@ const StudentDashboardHome: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 text-slate-900 flex">
+    <div className="min-h-screen bg-[var(--bg)] text-slate-900 flex">
       <StudentSidebar onLogout={handleLogout} />
 
       <main className="flex-1 px-4 md:px-10 pt-20 pb-10 overflow-y-auto flex flex-col items-center">
         {/* Header */}
         <header className="w-full max-w-5xl mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-pink-500">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--brand-600)]">
               Descubrir CameYos
             </p>
-            <h1 className="mt-1 text-2xl md:text-3xl font-semibold text-slate-900">
+            <h1 className="mt-1 text-2xl md:text-3xl font-semibold text-[var(--brand-900)]">
               Encuentra tu próximo trabajo flash
             </h1>
             <p className="mt-1 text-sm text-slate-500">
@@ -347,7 +345,7 @@ const StudentDashboardHome: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowFilters((prev) => !prev)}
-            className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white/80 shadow-sm border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="hidden sm:inline-flex items-center gap-2 rounded-full bg-white shadow-sm border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
           >
             <span>Filtros</span>
             <span className="h-5 w-[1px] bg-slate-200" />
@@ -382,7 +380,7 @@ const StudentDashboardHome: React.FC = () => {
                 <select
                   value={filterCategoria}
                   onChange={(e) => setFilterCategoria(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/60 focus:border-fuchsia-500"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--brand-600)]/60 focus:border-[var(--brand-600)]"
                 >
                   <option value="">Todas</option>
                   {uniqueCategories.map((cat) => (
@@ -401,7 +399,7 @@ const StudentDashboardHome: React.FC = () => {
                 <select
                   value={filterCiudad}
                   onChange={(e) => setFilterCiudad(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/60 focus:border-fuchsia-500"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--brand-600)]/60 focus:border-[var(--brand-600)]"
                 >
                   <option value="">Todas</option>
                   {uniqueCities.map((city) => (
@@ -420,7 +418,7 @@ const StudentDashboardHome: React.FC = () => {
                 <select
                   value={filterModalidad}
                   onChange={(e) => setFilterModalidad(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/60 focus:border-fuchsia-500"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--brand-600)]/60 focus:border-[var(--brand-600)]"
                 >
                   <option value="">Todas</option>
                   {uniqueModalidades.map((m) => (
@@ -442,7 +440,7 @@ const StudentDashboardHome: React.FC = () => {
                 <button
                   type="button"
                   onClick={applyFilters}
-                  className="inline-flex items-center justify-center rounded-full bg-slate-900 text-white text-[11px] px-4 py-2 font-medium hover:bg-slate-800"
+                  className="inline-flex items-center justify-center rounded-full bg-[var(--brand-900)] text-white text-[11px] px-4 py-2 font-medium hover:brightness-95"
                 >
                   Aplicar filtros
                 </button>
@@ -462,12 +460,12 @@ const StudentDashboardHome: React.FC = () => {
         {loading ? (
           <p className="mt-10 text-sm text-slate-600">Cargando CameYos...</p>
         ) : trabajos.length === 0 ? (
-          // 🔄 Estado sin CameYos – estilo "No more jobs to show"
+          // 🔄 Estado sin CameYos
           <div className="mt-16 w-full flex flex-col items-center">
-            <div className="max-w-md w-full bg-white/80 border border-slate-100 rounded-3xl shadow-xl px-8 py-16 text-center">
+            <div className="max-w-md w-full bg-white border border-slate-100 rounded-3xl shadow-xl px-8 py-16 text-center">
               <div className="flex items-center justify-center mb-5">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-pink-500 via-fuchsia-500 to-purple-500 flex items-center justify-center shadow-lg">
-                  <span className="text-3xl">🎉</span>
+                <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-[var(--brand-900)] via-[var(--brand-600)] to-emerald-500 flex items-center justify-center shadow-lg">
+                  <span className="text-3xl text-white">🎉</span>
                 </div>
               </div>
               <h2 className="text-lg font-semibold text-slate-900 mb-1">
@@ -481,7 +479,7 @@ const StudentDashboardHome: React.FC = () => {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 px-6 py-2.5 text-sm font-medium text-white shadow-md hover:brightness-105"
+                className="inline-flex items-center justify-center rounded-full bg-gradient-to-tr from-[var(--brand-900)] via-[var(--brand-600)] to-emerald-500 px-6 py-2.5 text-sm font-medium text-white shadow-md hover:brightness-105"
               >
                 Mostrar CameYos otra vez
               </button>
@@ -489,9 +487,9 @@ const StudentDashboardHome: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Card tipo SwipeHire centrado */}
+            {/* Card tipo swipe centrado */}
             <section className="mt-4 w-full flex flex-col items-center">
-              {/* Pequeño subtítulo sobre el CameYo actual */}
+              {/* Subtítulo */}
               {trabajoActual && (
                 <div className="mb-4 text-xs text-slate-500">
                   CameYos disponibles en{" "}
@@ -543,8 +541,10 @@ const StudentDashboardHome: React.FC = () => {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <div className="h-full w-full bg-gradient-to-br from-fuchsia-100 via-pink-50 to-purple-100 flex items-center justify-center">
-                              <span className="text-6xl">💼</span>
+                            <div className="h-full w-full bg-gradient-to-br from-[var(--brand-900)]/10 via-[var(--brand-600)]/10 to-emerald-50 flex items-center justify-center">
+                              <span className="text-6xl text-[var(--brand-900)]">
+                                💼
+                              </span>
                             </div>
                           )}
 
@@ -586,7 +586,7 @@ const StudentDashboardHome: React.FC = () => {
                           {/* Chips principales */}
                           <div className="flex flex-wrap gap-2 text-[11px]">
                             {trabajoActual.categoria && (
-                              <span className="inline-flex items-center rounded-full bg-fuchsia-50 px-3 py-1 text-fuchsia-600">
+                              <span className="inline-flex items-center rounded-full bg-[var(--brand-900)]/5 px-3 py-1 text-[var(--brand-900)]">
                                 💼 {trabajoActual.categoria}
                               </span>
                             )}
@@ -601,7 +601,7 @@ const StudentDashboardHome: React.FC = () => {
                               </span>
                             )}
                             {modalidadActual && (
-                              <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-indigo-600">
+                              <span className="inline-flex items-center rounded-full bg-[var(--brand-600)]/10 px-3 py-1 text-[var(--brand-600)]">
                                 🕒 {modalidadActual}
                               </span>
                             )}
@@ -610,7 +610,7 @@ const StudentDashboardHome: React.FC = () => {
                           {/* Sección Sobre el CameYo */}
                           <div className="space-y-1 text-xs text-slate-600">
                             <p className="flex items-center gap-1 font-semibold text-[11px] text-slate-700">
-                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-50 text-pink-500 text-[11px]">
+                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-600)]/10 text-[var(--brand-600)] text-[11px]">
                                 i
                               </span>
                               Sobre el CameYo
@@ -626,7 +626,7 @@ const StudentDashboardHome: React.FC = () => {
                             {parseToList(trabajoActual.requisitos).length > 0 && (
                               <div>
                                 <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-700">
-                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white text-[10px]">
+                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-900)] text-white text-[10px]">
                                     ✓
                                   </span>
                                   Requisitos
@@ -645,7 +645,7 @@ const StudentDashboardHome: React.FC = () => {
                               0 && (
                               <div>
                                 <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-700">
-                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-purple-50 text-purple-600 text-[11px]">
+                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-600)]/10 text-[var(--brand-600)] text-[11px]">
                                     ✧
                                   </span>
                                   Habilidades deseadas
@@ -666,7 +666,7 @@ const StudentDashboardHome: React.FC = () => {
                             )}
                           </div>
 
-                          {/* Mensaje inferior tipo "swipeó tu job" */}
+                          {/* Mensaje inferior */}
                           <div className="mt-1 rounded-2xl bg-emerald-50 text-[11px] text-emerald-700 px-3 py-2 flex items-center gap-2">
                             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs">
                               ♥
@@ -695,7 +695,7 @@ const StudentDashboardHome: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSwipe("like")}
-                  className="h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 text-white text-2xl shadow-lg hover:brightness-105"
+                  className="h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-tr from-[var(--brand-900)] via-[var(--brand-600)] to-emerald-500 text-white text-2xl shadow-lg hover:brightness-105"
                 >
                   ♥
                 </button>
@@ -791,7 +791,7 @@ const StudentDashboardHome: React.FC = () => {
               <div
                 className={
                   feedback === "like"
-                    ? "inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 text-white px-4 py-2 text-xs shadow-lg"
+                    ? "inline-flex items-center gap-2 rounded-full bg-gradient-to-tr from-[var(--brand-900)] via-[var(--brand-600)] to-emerald-500 text-white px-4 py-2 text-xs shadow-lg"
                     : "inline-flex items-center gap-2 rounded-full bg-red-50 border border-red-200 text-red-600 px-4 py-2 text-xs shadow-lg"
                 }
               >
