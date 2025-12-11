@@ -42,13 +42,7 @@ const EmployerCompleteRegister: React.FC = () => {
     tipo_identidad?: string;
   }>({});
 
-    // Convierte un DataURL (data:image/png;base64,AAA...) a solo la parte base64
-  const dataUrlToBase64 = (value: string): string => {
-    if (!value) return "";
-    if (!value.startsWith("data:")) return value; // si ya es solo base64 o una URL, se devuelve tal cual
-    const parts = value.split(",", 2);
-    return parts.length === 2 ? parts[1] : value;
-  };
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem("auth_user");
@@ -189,8 +183,8 @@ const EmployerCompleteRegister: React.FC = () => {
         tipo_identidad: tipoIdentidad,
 
         // Enviamos solo la parte base64 si viene como DataURL
-        foto_perfil_base64: dataUrlToBase64(form.fotoPerfil),
-        logo_empresa: dataUrlToBase64(form.logoEmpresa),
+        foto_perfil_base64: (form.fotoPerfil),
+        logo_empresa: (form.logoEmpresa),
 
         frase_corta: "",
         biografia: form.biografia,
