@@ -257,77 +257,63 @@ const EmployerStudentsHome: React.FC = () => {
   };
 
   const sendEmployerMatch = async (
-    student: PublicStudent
-  ): Promise<boolean> => {
-    const token = localStorage.getItem("auth_token");
-    if (!token || !student.id || !student.job_id) return false;
+  student: PublicStudent,
+  like: boolean
+): Promise<boolean> => {
+  const token = localStorage.getItem("auth_token");
+  if (!token || !student.id || !student.job_id) return false;
 
-    try {
-      const res = await fetch(EMPLOYER_MATCH_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          estudiante_id: student.id,
-          job_id: student.job_id,
-          like: true,
-        }),
-      });
+  try {
+    const res = await fetch(EMPLOYER_MATCH_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        estudiante_id: student.id,
+        job_id: student.job_id,
+        like, // ✅ ahora sí manda true/false según tu acción
+      }),
+    });
 
-      if (!res.ok) {
-        console.error("Error respuesta matches/responder:", await res.text());
-        return false;
-      }
-
-      return true;
-    } catch (err) {
-      console.error("Error al registrar el match del empleador:", err);
+    if (!res.ok) {
+      console.error("Error respuesta matches/responder:", await res.text());
       return false;
     }
-  };
 
-  const handleSwipe = async (action: "like" | "dislike") => {
-    if (!filteredStudents.length) return;
+    return true;
+  } catch (err) {
+    console.error("Error al registrar respuesta del empleador:", err);
+    return false;
+  }
+};
 
-    const current = filteredStudents[currentIndex];
 
-    setLastDirection(action === "like" ? "right" : "left");
-    setFeedback(action);
+const handleSwipe = async (action: "like" | "dislike") => {
+  if (!filteredStudents.length) return;
 
-    let matchOk = false;
+  const current = filteredStudents[currentIndex];
 
-    // Siempre estamos en contexto de “estudiantes interesados”
-    if (action === "like") {
-      const ok = await sendEmployerMatch(current);
-      matchOk = ok;
-      if (!ok) {
-        setError(
-          "No se pudo registrar el match con este estudiante. Intenta de nuevo."
-        );
-      }
-    }
+  setLastDirection(action === "like" ? "right" : "left");
+  setFeedback(action);
 
-    if (action === "like" && matchOk) {
-      setMatchStudent(current);
-      setShowMatch(true);
-    }
+  const likeValue = action === "like";
+  const ok = await sendEmployerMatch(current, likeValue);
 
-    // Eliminamos del arreglo base por id
-    const updatedBase = students.filter((s) => s.id !== current.id);
-    setStudents(updatedBase);
+  if (!ok) {
+    setError("No se pudo registrar tu decisión. Intenta de nuevo.");
+    return; // (opcional, pero recomendado para no quitar la card si falló)
+  }
 
-    const newFiltered = updatedBase.filter(filterFn);
+  if (likeValue) {
+    setMatchStudent(current);
+    setShowMatch(true);
+  }
 
-    if (newFiltered.length === 0) {
-      setCurrentIndex(0);
-    } else if (currentIndex >= newFiltered.length) {
-      setCurrentIndex(newFiltered.length - 1);
-    } else {
-      setCurrentIndex(currentIndex);
-    }
-  };
+  // ...tu lógica actual para remover del array y avanzar
+};
+
 
   const studentActual = filteredStudents[currentIndex] || null;
 
